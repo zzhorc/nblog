@@ -1,0 +1,26 @@
+diff --git a/build/index.js b/build/index.js
+index 5e4575857ac25b1a049cf5a736cb11daba10f1c8..8ede4608627eca8ae7f91b1041e6616bfa666048 100644
+--- a/build/index.js
++++ b/build/index.js
+@@ -377,9 +377,9 @@ async function getAllPagesInSpace(rootPageId, rootSpaceId, getPage, {
+               for (const collectionData of Object.values(collectionViews)) {
+                 const blockIds = Array.from(
+                   /* @__PURE__ */ new Set([
+-                    ...((_c = collectionData == null ? void 0 : collectionData.collection_group_results) == null ? void 0 : _c.blockIds) || [],
+-                    ...collectionData.blockIds || []
+-                  ])
++                  ...((_c = collectionData == null ? void 0 : collectionData.collection_group_results) == null ? void 0 : _c.blockIds) || [],
++                  ...collectionData.blockIds || []
++                ])
+                 );
+                 if (blockIds.length) {
+                   for (const collectionItemId of blockIds) {
+@@ -530,7 +530,7 @@ var normalizeTitle = (title) => {
+ };
+ 
+ // src/uuid-to-id.ts
+-var uuidToId = (uuid) => uuid.replaceAll("-", "");
++var uuidToId = (uuid) => (uuid || "").replaceAll("-", "");
+ 
+ // src/get-canonical-page-id.ts
+ var getCanonicalPageId = (pageId, recordMap, { uuid = true } = {}) => {

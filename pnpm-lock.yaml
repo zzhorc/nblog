@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  notion-utils:
+    hash: e9e933470bb3e03d44cd30e51cc5703476e0d4b9b0b448a994eebf615f705f34
+    path: patches/notion-utils.patch
+
 importers:
 
   .:
@@ -49,7 +54,7 @@ importers:
         version: 7.7.0
       notion-utils:
         specifier: ^7.7.0
-        version: 7.7.0
+        version: 7.7.0(patch_hash=e9e933470bb3e03d44cd30e51cc5703476e0d4b9b0b448a994eebf615f705f34)
       p-map:
         specifier: ^7.0.3
         version: 7.0.3
@@ -4213,13 +4218,13 @@ snapshots:
   notion-client@7.7.0:
     dependencies:
       notion-types: 7.7.0
-      notion-utils: 7.7.0
+      notion-utils: 7.7.0(patch_hash=e9e933470bb3e03d44cd30e51cc5703476e0d4b9b0b448a994eebf615f705f34)
       ofetch: 1.4.1
       p-map: 7.0.3
 
   notion-types@7.7.0: {}
 
-  notion-utils@7.7.0:
+  notion-utils@7.7.0(patch_hash=e9e933470bb3e03d44cd30e51cc5703476e0d4b9b0b448a994eebf615f705f34):
     dependencies:
       is-url-superb: 6.1.0
       memoize: 10.1.0
@@ -4486,7 +4491,7 @@ snapshots:
       '@matejmazur/react-katex': 3.1.3(katex@0.16.28)(react@19.1.1)
       katex: 0.16.28
       notion-types: 7.7.0
-      notion-utils: 7.7.0
+      notion-utils: 7.7.0(patch_hash=e9e933470bb3e03d44cd30e51cc5703476e0d4b9b0b448a994eebf615f705f34)
       prismjs: 1.30.0
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
