@@ -21,7 +21,8 @@ export default withBundleAnalyzer({
     ],
     formats: ['image/avif', 'image/webp'],
     dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;"
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    unoptimized: true
   },
 
   webpack: (config) => {
@@ -38,5 +39,9 @@ export default withBundleAnalyzer({
   },
 
   // See https://react-tweet.vercel.app/next#troubleshooting
-  transpilePackages: ['react-tweet']
+  transpilePackages: ['react-tweet'],
+
+  // Silence Turbopack warning about webpack config without turbopack config
+  // Next.js 16 enables Turbopack by default
+  turbopack: {}
 })

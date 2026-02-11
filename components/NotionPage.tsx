@@ -9,7 +9,6 @@ import * as React from 'react'
 import BodyClassName from 'react-body-classname'
 import {
   type NotionComponents,
-  NotionRenderer,
   useNotionContext
 } from 'react-notion-x'
 import { EmbeddedTweet, TweetNotFound, TweetSkeleton } from 'react-tweet'
@@ -131,6 +130,13 @@ const Modal = dynamic(
   }
 )
 
+const NotionRenderer = dynamic(
+  () => import('react-notion-x').then((m) => m.NotionRenderer),
+  {
+    ssr: false
+  }
+)
+
 function Tweet({ id }: { id: string }) {
   const { recordMap } = useNotionContext()
   const tweet = (recordMap as types.ExtendedTweetRecordMap)?.tweets?.[id]
@@ -213,7 +219,12 @@ export function NotionPage({
   // lite mode is for oembed
   const isLiteMode = lite === 'true'
 
+  const [hasMounted, setHasMounted] = React.useState(false)
   const { isDarkMode } = useDarkMode()
+
+  React.useEffect(() => {
+    setHasMounted(true)
+  }, [])
 
   const siteMapPageUrl = React.useMemo(() => {
     const params: any = {}
@@ -279,8 +290,8 @@ export function NotionPage({
 
   const socialImage = mapImageUrl(
     getPageProperty<string>('Social Image', block, recordMap) ||
-      (block as PageBlock).format?.page_cover ||
-      config.defaultPageCover,
+    (block as PageBlock).format?.page_cover ||
+    config.defaultPageCover,
     block
   )
 
@@ -301,14 +312,14 @@ export function NotionPage({
       />
 
       {isLiteMode && <BodyClassName className='notion-lite' />}
-      {isDarkMode && <BodyClassName className='dark-mode' />}
+      {hasMounted && isDarkMode && <BodyClassName className='dark-mode' />}
 
       <NotionRenderer
         bodyClassName={cs(
           styles.notion,
           pageId === site.rootNotionPageId && 'index-page'
         )}
-        darkMode={isDarkMode}
+        darkMode={hasMounted && isDarkMode}
         components={components}
         recordMap={recordMap}
         rootPageId={site.rootNotionPageId}
