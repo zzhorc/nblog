@@ -1,0 +1,2 @@
+patchedDependencies:
+  notion-utils: patches/notion-utils.patch
