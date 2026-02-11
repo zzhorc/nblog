@@ -4,6 +4,10 @@ import { defaultMapImageUrl } from 'notion-utils'
 import { defaultPageCover, defaultPageIcon } from './config'
 
 export const mapImageUrl = (url: string | undefined, block: Block) => {
+  if (!url) {
+    return null
+  }
+
   if (url === defaultPageCover || url === defaultPageIcon) {
     return url
   }
