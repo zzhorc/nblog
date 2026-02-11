@@ -31,7 +31,8 @@ export const mapPageUrl =
 export const getCanonicalPageUrl =
   (site: Site, recordMap: ExtendedRecordMap) =>
     (pageId = '') => {
-      const pageUuid = parsePageId(pageId, { uuid: true })!
+      const pageUuid = parsePageId(pageId, { uuid: true })
+      if (!pageUuid) return null
 
       if (uuidToId(pageId) === site.rootNotionPageId) {
         return `https://${site.domain}`
