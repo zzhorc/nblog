@@ -1,3 +1,4 @@
+import ExpiryMap from 'expiry-map'
 import { getAllPagesInSpace, getPageProperty, uuidToId } from 'notion-utils'
 import pMemoize from 'p-memoize'
 
@@ -22,6 +23,7 @@ export async function getSiteMap(): Promise<types.SiteMap> {
 }
 
 const getAllPages = pMemoize(getAllPagesImpl, {
+  cache: new ExpiryMap(10000),
   cacheKey: (...args) => JSON.stringify(args)
 })
 

@@ -6,6 +6,7 @@ import {
 import { mergeRecordMaps } from 'notion-utils'
 import pMap from 'p-map'
 import pMemoize from 'p-memoize'
+import ExpiryMap from 'expiry-map'
 
 import {
   isPreviewImageSupportEnabled,
@@ -39,6 +40,10 @@ const getNavigationLinkPages = pMemoize(
     }
 
     return []
+  },
+  {
+    cache: new ExpiryMap(10000),
+    cacheKey: (...args) => JSON.stringify(args)
   }
 )
 
