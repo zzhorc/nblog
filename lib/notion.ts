@@ -42,8 +42,53 @@ const getNavigationLinkPages = pMemoize(
   }
 )
 
+/**
+ * Unwraps the Notion API response to fix double-nested structure.
+ * Notion API now returns blocks in format: block[id].value.value.type
+ * but react-notion-x expects: block[id].value.type
+ */
+function unwrapRecordMap(recordMap: ExtendedRecordMap): ExtendedRecordMap {
+  const unwrap = (record: any) => {
+    if (!record) return record
+    // Check if this record has the double-nested structure
+    if (record.value && record.value.value && record.value.role) {
+      // Unwrap: keep spaceId at top level, but flatten the value.value to value
+      return {
+        spaceId: record.spaceId,
+        value: record.value.value
+      }
+    }
+    return record
+  }
+
+  return {
+    ...recordMap,
+    block: Object.fromEntries(
+      Object.entries(recordMap.block || {}).map(([id, record]) => [
+        id,
+        unwrap(record)
+      ])
+    ),
+    collection: Object.fromEntries(
+      Object.entries(recordMap.collection || {}).map(([id, record]) => [
+        id,
+        unwrap(record)
+      ])
+    ),
+    collection_view: Object.fromEntries(
+      Object.entries(recordMap.collection_view || {}).map(([id, record]) => [
+        id,
+        unwrap(record)
+      ])
+    )
+  }
+}
+
 export async function getPage(pageId: string): Promise<ExtendedRecordMap> {
   let recordMap = await notion.getPage(pageId)
+
+  // Unwrap double-nested structure from Notion API
+  recordMap = unwrapRecordMap(recordMap)
 
   if (navigationStyle !== 'default') {
     // ensure that any pages linked to in the custom navigation header have
@@ -62,7 +107,7 @@ export async function getPage(pageId: string): Promise<ExtendedRecordMap> {
 
   if (isPreviewImageSupportEnabled) {
     const previewImageMap = await getPreviewImageMap(recordMap)
-    ;(recordMap as any).preview_images = previewImageMap
+      ; (recordMap as any).preview_images = previewImageMap
   }
 
   await getTweetsMap(recordMap)
