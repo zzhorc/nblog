@@ -21,7 +21,7 @@ import {
 } from './types'
 
 export const rootNotionPageId: string = parsePageId(
-  process.env.NOTION_PAGE_ID || getSiteConfig('rootNotionPageId'),
+  process.env.NEXT_PUBLIC_NOTION_PAGE_ID || getSiteConfig('rootNotionPageId'),
   { uuid: false }
 )!
 
