@@ -170,6 +170,8 @@ export const posthogConfig: Partial<PostHogConfig> = {
   api_host: 'https://app.posthog.com'
 }
 
+export const revalidateToken = process.env.REVALIDATE_TOKEN
+
 function cleanPageUrlMap(
   pageUrlMap: PageUrlOverridesMap,
   {
