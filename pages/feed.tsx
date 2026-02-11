@@ -57,6 +57,8 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
       getPageProperty<string>('Description', block, recordMap) ||
       config.description
     const url = getCanonicalPageUrl(config.site, recordMap)(pageId)
+    if (!url) continue
+
     const lastUpdatedTime = getPageProperty<number>(
       'Last Updated',
       block,
@@ -77,9 +79,9 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
       description,
       enclosure: socialImageUrl
         ? {
-            url: socialImageUrl,
-            type: 'image/jpeg'
-          }
+          url: socialImageUrl,
+          type: 'image/jpeg'
+        }
         : undefined
     })
   }
