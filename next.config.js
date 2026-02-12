@@ -52,7 +52,7 @@ export default withBundleAnalyzer({
   },
 
   // See https://react-tweet.vercel.app/next#troubleshooting
-  transpilePackages: ['react-tweet'],
+  transpilePackages: ['react-tweet', '@react-icons/all-files'],
 
   // Silence Turbopack warning about webpack config without turbopack config
   // Next.js 16 enables Turbopack by default
