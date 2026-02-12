@@ -10,10 +10,12 @@ export const getStaticProps: GetStaticProps<PageProps, Params> = async (
   context
 ) => {
   const rawPageId = context.params?.pageId as string
+  console.log(`[ISR] getStaticProps called for "${rawPageId}" at ${new Date().toISOString()}`)
 
   try {
     const props = await resolveNotionPage(domain, rawPageId)
 
+    console.log(`[ISR] getStaticProps completed for "${rawPageId}" at ${new Date().toISOString()}`)
     return { props, revalidate: 10 }
   } catch (err) {
     console.error('page error', domain, rawPageId, err)

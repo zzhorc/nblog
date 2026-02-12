@@ -4,9 +4,11 @@ import { domain } from '@/lib/config'
 import { resolveNotionPage } from '@/lib/resolve-notion-page'
 
 export const getStaticProps = async () => {
+  console.log(`[ISR] index getStaticProps called at ${new Date().toISOString()}`)
   try {
     const props = await resolveNotionPage(domain)
 
+    console.log(`[ISR] index getStaticProps completed at ${new Date().toISOString()}`)
     return { props, revalidate: 10 }
   } catch (err) {
     console.error('page error', domain, err)

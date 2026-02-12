@@ -10,6 +10,19 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 export default withBundleAnalyzer({
   staticPageGenerationTimeout: 300,
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'CDN-Cache-Control',
+            value: 'max-age=0, must-revalidate'
+          }
+        ]
+      }
+    ]
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'www.notion.so' },
