@@ -112,7 +112,9 @@ nblog/
 
 ## 致谢
 
-本项目基于 [Travis Fischer](https://github.com/transitive-bullshit) 的 [nextjs-notion-starter-kit](https://github.com/transitive-bullshit/nextjs-notion-starter-kit) 开发。原作者文档：[transitivebullsh.it/nextjs-notion-starter-kit](https://transitivebullsh.it/nextjs-notion-starter-kit)。
+本项目基于 [Travis Fischer](https://github.com/transitive-bullshit) 的 [nextjs-notion-starter-kit](https://github.com/transitive-bullshit/nextjs-notion-starter-kit) 开发。
+
+原作者文档：[transitivebullsh.it/nextjs-notion-starter-kit](https://transitivebullsh.it/nextjs-notion-starter-kit)。
 
 ## License
 
