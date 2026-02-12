@@ -17,7 +17,7 @@ export default withBundleAnalyzer({
         headers: [
           {
             key: 'CDN-Cache-Control',
-            value: 'max-age=0, must-revalidate'
+            value: 'max-age=60, must-revalidate'
           }
         ]
       }

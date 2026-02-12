@@ -9,7 +9,7 @@ export const getStaticProps = async () => {
     const props = await resolveNotionPage(domain)
 
     console.log(`[ISR] index getStaticProps completed at ${new Date().toISOString()}`)
-    return { props, revalidate: 10 }
+    return { props, revalidate: 60 }
   } catch (err) {
     console.error('page error', domain, err)
 

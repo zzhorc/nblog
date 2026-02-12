@@ -42,7 +42,7 @@ const getNavigationLinkPages = pMemoize(
     return []
   },
   {
-    cache: new ExpiryMap(10000),
+    cache: new ExpiryMap(60000),
     cacheKey: (...args) => JSON.stringify(args)
   }
 )

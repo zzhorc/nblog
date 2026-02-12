@@ -33,7 +33,7 @@ export async function resolveNotionPage(
     const cacheKey = `uri-to-page-id:${domain}:${environment}:${rawPageId}`
     // TODO: should we use a TTL for these mappings or make them permanent?
     // const cacheTTL = 8.64e7 // one day in milliseconds
-    const cacheTTL = 10000 // disable cache TTL
+    const cacheTTL = 60000 // 60 seconds, aligned with revalidate interval
 
     if (!pageId && useUriToPageIdCache) {
       try {

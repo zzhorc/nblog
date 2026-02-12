@@ -23,7 +23,7 @@ export async function getSiteMap(): Promise<types.SiteMap> {
 }
 
 const getAllPages = pMemoize(getAllPagesImpl, {
-  cache: new ExpiryMap(10000),
+  cache: new ExpiryMap(60000),
   cacheKey: (...args) => JSON.stringify(args)
 })
 
