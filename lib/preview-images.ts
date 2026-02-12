@@ -77,4 +77,9 @@ async function createPreviewImage(
   }
 }
 
-export const getPreviewImage = pMemoize(createPreviewImage)
+import ExpiryMap from 'expiry-map'
+
+export const getPreviewImage = pMemoize(createPreviewImage, {
+  cache: new ExpiryMap(3600000), // 1 hour TTL
+  cacheKey: (...args) => JSON.stringify(args)
+})
