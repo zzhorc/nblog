@@ -406,3 +406,18 @@
 .notion-equation.notion-equation-block {
   align-items: center;
 }
+
+/* Table of Contents overrides - Red text, light underline */
+.notion-table-of-contents-item {
+  color: #eb5757 !important;
+  opacity: 1 !important;
+}
+
+.notion-table-of-contents-item:hover {
+  background: var(--bg-color-0) !important;
+  text-decoration: none !important;
+}
+
+.notion-table-of-contents-item-body {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
