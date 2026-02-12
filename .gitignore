@@ -37,3 +37,4 @@ yarn-error.log*
 
 # vercel
 .vercel
+CHANGELOG_LOCAL.md
