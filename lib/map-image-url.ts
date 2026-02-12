@@ -3,6 +3,13 @@ import { defaultMapImageUrl } from 'notion-utils'
 
 import { defaultPageCover, defaultPageIcon } from './config'
 
+// The Notion root page icon attachment URL.
+// This specific attachment fails to load externally, so we replace it
+// with the local /logo.png file. Update this if you change your
+// Notion page icon.
+const ROOT_PAGE_ICON_ATTACHMENT =
+  'attachment:b49c0d70-303b-4c64-9635-5196dc4eb149:0_image_25F.png'
+
 export const mapImageUrl = (url: string | undefined, block: Block) => {
   if (!url) {
     return undefined
@@ -12,10 +19,8 @@ export const mapImageUrl = (url: string | undefined, block: Block) => {
     return url
   }
 
-  // Replace page icon attachment URLs with local logo.
-  // Only matches when the URL IS the page icon (not regular content attachments).
-  const pageIcon = (block as any)?.format?.page_icon
-  if (pageIcon && pageIcon.startsWith('attachment:') && url === pageIcon) {
+  // Replace the root page icon attachment with local logo
+  if (url === ROOT_PAGE_ICON_ATTACHMENT) {
     return '/logo.png'
   }
 
