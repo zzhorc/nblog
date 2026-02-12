@@ -12,5 +12,11 @@ export const mapImageUrl = (url: string | undefined, block: Block) => {
     return url
   }
 
+  // Notion attachment URLs often fail to load (require auth / expire).
+  // Replace them with the local logo image.
+  if (url.includes('attachment%3A') || url.includes('attachment:')) {
+    return '/logo.png'
+  }
+
   return defaultMapImageUrl(url, block)
 }

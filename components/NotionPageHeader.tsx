@@ -46,7 +46,11 @@ export function NotionPageHeader({
   return (
     <header className='notion-header'>
       <div className='notion-nav-header'>
-        <Breadcrumbs block={block} rootOnly={true} />
+        <div className='breadcrumb button' style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <a href='/' style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: 'inherit' }}>
+            <img src='/logo.png' alt='Logo' style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+          </a>
+        </div>
 
         <div className='notion-nav-header-rhs breadcrumbs'>
           {navigationLinks
