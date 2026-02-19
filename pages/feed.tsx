@@ -32,8 +32,17 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
     ttl: ttlMinutes
   })
 
-  for (const pagePath of Object.keys(siteMap.canonicalPageMap)) {
-    const pageId = siteMap.canonicalPageMap[pagePath]!
+  // Build inverse map: pageId -> canonicalPath (for URL generation)
+  const inverseCanonicalMap: Record<string, string> = {}
+  for (const [path, id] of Object.entries(siteMap.canonicalPageMap)) {
+    inverseCanonicalMap[id!] = path
+  }
+
+  // Iterate pageMap keys — this preserves Notion's page traversal order
+  for (const pageId of Object.keys(siteMap.pageMap)) {
+    // Skip pages that don't have a canonical path (e.g. root page)
+    if (!inverseCanonicalMap[pageId]) continue
+
     const recordMap = siteMap.pageMap[pageId] as ExtendedRecordMap
     if (!recordMap) continue
 

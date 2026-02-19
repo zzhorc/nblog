@@ -15,7 +15,7 @@ import * as config from './config'
 // Rich-text (Decoration) → HTML
 // ---------------------------------------------------------------------------
 
-function decorationsToHtml(decorations?: Decoration[]): string {
+function decorationsToHtml(decorations?: Decoration[], recordMap?: ExtendedRecordMap): string {
     if (!decorations) return ''
 
     return decorations
@@ -47,6 +47,23 @@ function decorationsToHtml(decorations?: Decoration[]): string {
                         case '_':
                             html = `<u>${html}</u>`
                             break
+                        case 'p': {
+                            // Page mention: ‣ with ['p', 'page-id']
+                            const pageId = fmt[1] as string
+                            if (pageId && recordMap) {
+                                const refBlock = recordMap.block[pageId]?.value
+                                const pageTitle = refBlock?.properties?.title
+                                    ? getTextContent(refBlock.properties.title as Decoration[])
+                                    : 'Untitled'
+                                const pageUrl = `${config.host}/${pageId.replace(/-/g, '')}`
+                                html = `<a href="${escapeAttr(pageUrl)}">${escapeHtml(pageTitle)}</a>`
+                            }
+                            break
+                        }
+                        case 'u': {
+                            // User mention — just show the text as-is
+                            break
+                        }
                     }
                 }
             }
@@ -77,7 +94,7 @@ function blockToHtml(
     }
 
     const title = properties?.title
-    const richText = decorationsToHtml(title)
+    const richText = decorationsToHtml(title, recordMap)
     const childHtml = (content || [])
         .map((childId) => blockToHtml(childId, recordMap, depth + 1))
         .join('')
@@ -133,7 +150,7 @@ function blockToHtml(
             if (!source) return ''
             const imgUrl = resolveImageUrl(source, blockValue as Block)
             const caption = properties?.caption
-                ? decorationsToHtml(properties.caption)
+                ? decorationsToHtml(properties.caption, recordMap)
                 : ''
             return `<figure style="margin:16px 0;"><img src="${escapeAttr(imgUrl)}" alt="${escapeAttr(getTextContent(properties?.caption || []))}" style="max-width:100%;height:auto;" />${caption ? `<figcaption style="text-align:center;color:#666;font-size:0.9em;margin-top:4px;">${caption}</figcaption>` : ''}</figure>`
         }
@@ -195,7 +212,7 @@ function blockToHtml(
             const cellEntries = Object.keys(cells)
                 .sort()
                 .map((key) => {
-                    const cellContent = decorationsToHtml(cells[key])
+                    const cellContent = decorationsToHtml(cells[key], recordMap)
                     return `<td>${cellContent}</td>`
                 })
             return `<tr>${cellEntries.join('')}</tr>`
