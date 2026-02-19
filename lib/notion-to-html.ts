@@ -99,16 +99,17 @@ function blockToHtml(
 
         // ---- Lists ----
         case 'bulleted_list':
-            return `<ul><li>${richText}${childHtml}</li></ul>`
+            return `<!--UL--><li>${richText}${childHtml}</li><!--/UL-->`
 
         case 'numbered_list':
-            return `<ol><li>${richText}${childHtml}</li></ol>`
+            return `<!--OL--><li>${richText}${childHtml}</li><!--/OL-->`
 
         case 'to_do': {
             const checked = properties?.checked?.[0]?.[0] === 'Yes'
             const checkbox = checked ? '☑ ' : '☐ '
-            return `<ul><li>${checkbox}${richText}${childHtml}</li></ul>`
+            return `<!--UL--><li>${checkbox}${richText}${childHtml}</li><!--/UL-->`
         }
+
 
         // ---- Quote / Callout ----
         case 'quote':
@@ -211,10 +212,17 @@ function blockToHtml(
 // ---------------------------------------------------------------------------
 
 function mergeAdjacentLists(html: string): string {
-    // Merge adjacent <ul> and <ol> tags
+    // Replace adjacent UL markers with proper <ul> wrapper
+    html = html.replace(/(<!--UL--><li>.*?<\/li><!--\/UL-->(?:\s*<!--UL--><li>.*?<\/li><!--\/UL-->)*)/gs, (match) => {
+        const items = match.replace(/<!--\/?UL-->/g, '')
+        return `<ul>${items}</ul>`
+    })
+    // Replace adjacent OL markers with proper <ol> wrapper
+    html = html.replace(/(<!--OL--><li>.*?<\/li><!--\/OL-->(?:\s*<!--OL--><li>.*?<\/li><!--\/OL-->)*)/gs, (match) => {
+        const items = match.replace(/<!--\/?OL-->/g, '')
+        return `<ol>${items}</ol>`
+    })
     return html
-        .replace(/<\/ul>\s*<ul>/g, '')
-        .replace(/<\/ol>\s*<ol>/g, '')
 }
 
 // ---------------------------------------------------------------------------
