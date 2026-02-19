@@ -8,12 +8,12 @@ export default siteConfig({
   rootNotionSpaceId: null,
 
   // basic site info (required)
-  name: 'Next.js Notion Starter Kit',
+  name: '3R1CCHENG',
   domain: 'it',
   author: 'Zeoihou Cheng',
 
   // open graph metadata (optional)
-  description: 'Zeoihou Cheng\'s Next.js Notion Starter Kit Site',
+  description: 'Zeoihou Cheng\'s Blog',
 
   // social usernames (optional)
   twitter: ' ',

@@ -10,6 +10,7 @@ import * as config from '@/lib/config'
 import { getSiteMap } from '@/lib/get-site-map'
 import { getSocialImageUrl } from '@/lib/get-social-image-url'
 import { getCanonicalPageUrl } from '@/lib/map-page-url'
+import { notionBlocksToHtml } from '@/lib/notion-to-html'
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   if (req.method !== 'GET') {
@@ -67,12 +68,16 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
         ? new Date(publishedTime)
         : new Date()
     const socialImageUrl = getSocialImageUrl(pageId)
+    const fullContent = notionBlocksToHtml(recordMap, pageId)
 
     feed.item({
       title,
       url,
       date,
       description,
+      custom_elements: [
+        { 'content:encoded': fullContent || description }
+      ],
       enclosure: socialImageUrl
         ? {
           url: socialImageUrl,
