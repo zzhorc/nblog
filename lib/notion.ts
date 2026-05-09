@@ -61,15 +61,23 @@ function unwrapRecord(record: any) {
   // Check if this record has the double-nested structure
   if (record.value && record.value.value && record.value.role) {
     // Unwrap: keep spaceId at top level, but flatten the value.value to value
-    return {
-      spaceId: record.spaceId,
+    const unwrappedRecord: {
+      value: any
+      spaceId?: any
+    } = {
       value: record.value.value
     }
+
+    if (record.spaceId !== undefined) {
+      unwrappedRecord.spaceId = record.spaceId
+    }
+
+    return unwrappedRecord
   }
   return record
 }
 
-function unwrapRecordMap(recordMap: ExtendedRecordMap): ExtendedRecordMap {
+export function unwrapRecordMap(recordMap: ExtendedRecordMap): ExtendedRecordMap {
   return {
     ...recordMap,
     block: Object.fromEntries(
@@ -93,7 +101,7 @@ function unwrapRecordMap(recordMap: ExtendedRecordMap): ExtendedRecordMap {
   }
 }
 
-async function fetchCollectionData(
+export async function fetchCollectionData(
   recordMap: ExtendedRecordMap
 ): Promise<ExtendedRecordMap> {
   recordMap.collection_query ??= {}

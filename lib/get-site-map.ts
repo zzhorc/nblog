@@ -6,6 +6,7 @@ import type * as types from './types'
 import * as config from './config'
 import { includeNotionIdInUrls } from './config'
 import { getCanonicalPageId } from './get-canonical-page-id'
+import { fetchCollectionData, unwrapRecordMap } from './notion'
 import { notion } from './notion-api'
 
 const uuid = !!includeNotionIdInUrls
@@ -23,18 +24,20 @@ export async function getSiteMap(): Promise<types.SiteMap> {
 }
 
 const getAllPages = pMemoize(getAllPagesImpl, {
-  cache: new ExpiryMap(60000),
+  cache: new ExpiryMap(60_000),
   cacheKey: (...args) => JSON.stringify(args)
 })
 
-const getPage = async (pageId: string, opts?: any) => {
+const getPageWithLog = async (pageId: string) => {
   console.log('\nnotion getPage', uuidToId(pageId || ''))
-  return notion.getPage(pageId, {
-    kyOptions: {
+  const recordMap = await notion.getPage(pageId, {
+    ofetchOptions: {
       timeout: 30_000
     },
-    ...opts
+    signFileUrls: false
   })
+
+  return fetchCollectionData(unwrapRecordMap(recordMap))
 }
 
 async function getAllPagesImpl(
@@ -49,7 +52,7 @@ async function getAllPagesImpl(
   const pageMap = await getAllPagesInSpace(
     rootNotionPageId,
     rootNotionSpaceId,
-    getPage,
+    getPageWithLog,
     {
       maxDepth
     }
