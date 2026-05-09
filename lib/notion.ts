@@ -1,12 +1,16 @@
+import ExpiryMap from 'expiry-map'
 import {
   type ExtendedRecordMap,
   type SearchParams,
   type SearchResults
 } from 'notion-types'
-import { mergeRecordMaps } from 'notion-utils'
+import {
+  getBlockCollectionId,
+  getPageContentBlockIds,
+  mergeRecordMaps
+} from 'notion-utils'
 import pMap from 'p-map'
 import pMemoize from 'p-memoize'
-import ExpiryMap from 'expiry-map'
 
 import {
   isPreviewImageSupportEnabled,
@@ -42,7 +46,7 @@ const getNavigationLinkPages = pMemoize(
     return []
   },
   {
-    cache: new ExpiryMap(60000),
+    cache: new ExpiryMap(60_000),
     cacheKey: (...args) => JSON.stringify(args)
   }
 )
@@ -52,41 +56,130 @@ const getNavigationLinkPages = pMemoize(
  * Notion API now returns blocks in format: block[id].value.value.type
  * but react-notion-x expects: block[id].value.type
  */
-function unwrapRecordMap(recordMap: ExtendedRecordMap): ExtendedRecordMap {
-  const unwrap = (record: any) => {
-    if (!record) return record
-    // Check if this record has the double-nested structure
-    if (record.value && record.value.value && record.value.role) {
-      // Unwrap: keep spaceId at top level, but flatten the value.value to value
-      return {
-        spaceId: record.spaceId,
-        value: record.value.value
-      }
+function unwrapRecord(record: any) {
+  if (!record) return record
+  // Check if this record has the double-nested structure
+  if (record.value && record.value.value && record.value.role) {
+    // Unwrap: keep spaceId at top level, but flatten the value.value to value
+    return {
+      spaceId: record.spaceId,
+      value: record.value.value
     }
-    return record
   }
+  return record
+}
 
+function unwrapRecordMap(recordMap: ExtendedRecordMap): ExtendedRecordMap {
   return {
     ...recordMap,
     block: Object.fromEntries(
       Object.entries(recordMap.block || {}).map(([id, record]) => [
         id,
-        unwrap(record)
+        unwrapRecord(record)
       ])
     ),
     collection: Object.fromEntries(
       Object.entries(recordMap.collection || {}).map(([id, record]) => [
         id,
-        unwrap(record)
+        unwrapRecord(record)
       ])
     ),
     collection_view: Object.fromEntries(
       Object.entries(recordMap.collection_view || {}).map(([id, record]) => [
         id,
-        unwrap(record)
+        unwrapRecord(record)
       ])
     )
   }
+}
+
+async function fetchCollectionData(
+  recordMap: ExtendedRecordMap
+): Promise<ExtendedRecordMap> {
+  recordMap.collection_query ??= {}
+
+  const collectionInstances = getPageContentBlockIds(recordMap).flatMap(
+    (blockId) => {
+      const block = recordMap.block[blockId]?.value
+
+      if (
+        !block ||
+        (block.type !== 'collection_view' &&
+          block.type !== 'collection_view_page')
+      ) {
+        return []
+      }
+
+      const collectionId = getBlockCollectionId(block, recordMap)
+      if (!collectionId) {
+        return []
+      }
+
+      return (block.view_ids || []).map((collectionViewId) => ({
+        collectionId,
+        collectionViewId
+      }))
+    }
+  )
+
+  await pMap(
+    collectionInstances,
+    async ({ collectionId, collectionViewId }) => {
+      const collectionQuery = recordMap.collection_query as any
+
+      if (collectionQuery?.[collectionId]?.[collectionViewId]) {
+        return
+      }
+
+      const collectionView =
+        recordMap.collection_view[collectionViewId]?.value
+
+      const collectionData = await notion.getCollectionData(
+        collectionId,
+        collectionViewId,
+        collectionView,
+        {
+          limit: 999
+        }
+      )
+      const reducerResults = collectionData.result?.reducerResults
+      if (!reducerResults) {
+        return
+      }
+
+      const collectionRecordMap = unwrapRecordMap({
+        collection_query: {},
+        signed_urls: {},
+        ...collectionData.recordMap
+      } as ExtendedRecordMap)
+
+      recordMap.block = {
+        ...recordMap.block,
+        ...collectionRecordMap.block
+      }
+      recordMap.collection = {
+        ...recordMap.collection,
+        ...collectionRecordMap.collection
+      }
+      recordMap.collection_view = {
+        ...recordMap.collection_view,
+        ...collectionRecordMap.collection_view
+      }
+      recordMap.notion_user = {
+        ...recordMap.notion_user,
+        ...collectionRecordMap.notion_user
+      }
+      collectionQuery[collectionId] = {
+        ...collectionQuery[collectionId],
+        [collectionViewId]: reducerResults
+      }
+    },
+    {
+      concurrency: 3
+    }
+  )
+
+  return recordMap
 }
 
 export async function getPage(pageId: string): Promise<ExtendedRecordMap> {
@@ -94,6 +187,7 @@ export async function getPage(pageId: string): Promise<ExtendedRecordMap> {
 
   // Unwrap double-nested structure from Notion API
   recordMap = unwrapRecordMap(recordMap)
+  recordMap = await fetchCollectionData(recordMap)
 
   if (navigationStyle !== 'default') {
     // ensure that any pages linked to in the custom navigation header have
