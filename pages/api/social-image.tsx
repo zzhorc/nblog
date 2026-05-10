@@ -22,7 +22,8 @@ export default async function OGImage(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const { searchParams } = new URL(req.url!)
+  const requestUrl = new URL(req.url!)
+  const { searchParams } = requestUrl
   const pageId = parsePageId(
     searchParams.get('id') || libConfig.rootNotionPageId
   )
@@ -30,14 +31,16 @@ export default async function OGImage(
     return new Response('Invalid notion page id', { status: 400 })
   }
 
-  const pageInfoOrError = await getNotionPageInfo({ pageId })
+  const pageInfoOrError = await getNotionPageInfo({
+    pageId,
+    baseUrl: requestUrl.origin
+  })
   if (pageInfoOrError.type === 'error') {
     return res.status(pageInfoOrError.error.statusCode).send({
       error: pageInfoOrError.error.message
     })
   }
   const pageInfo = pageInfoOrError.data
-  console.log(pageInfo)
 
   return new ImageResponse(
     (
@@ -168,9 +171,11 @@ export default async function OGImage(
 }
 
 export async function getNotionPageInfo({
-  pageId
+  pageId,
+  baseUrl
 }: {
   pageId: string
+  baseUrl: string
 }): Promise<
   | { type: 'success'; data: NotionPageInfo }
   | { type: 'error'; error: PageError }
@@ -225,8 +230,8 @@ export async function getNotionPageInfo({
   )
   const authorImageFallbackUrl = mapImageUrl(libConfig.defaultPageIcon, block)
   const [authorImage, image] = await Promise.all([
-    getCompatibleImageUrl(authorImageBlockUrl, authorImageFallbackUrl),
-    getCompatibleImageUrl(imageBlockUrl, imageFallbackUrl)
+    getCompatibleImageUrl(authorImageBlockUrl, authorImageFallbackUrl, baseUrl),
+    getCompatibleImageUrl(imageBlockUrl, imageFallbackUrl, baseUrl)
   ])
 
   const author =
@@ -289,12 +294,13 @@ async function isUrlReachable(
 
 async function getCompatibleImageUrl(
   url: string | undefined | null,
-  fallbackUrl: string | undefined | null
+  fallbackUrl: string | undefined | null,
+  baseUrl: string
 ): Promise<string | undefined> {
   const image = (await isUrlReachable(url)) ? url : fallbackUrl
 
   if (image) {
-    const imageUrl = new URL(image)
+    const imageUrl = new URL(image, baseUrl)
 
     if (imageUrl.host === 'images.unsplash.com') {
       if (!imageUrl.searchParams.has('w')) {
@@ -303,7 +309,9 @@ async function getCompatibleImageUrl(
         return imageUrl.toString()
       }
     }
+
+    return imageUrl.toString()
   }
 
-  return image ?? undefined
+  return undefined
 }

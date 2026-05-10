@@ -1,5 +1,17 @@
 import { siteConfig } from './lib/site-config'
 
+function getSiteDomain() {
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.NEXT_PUBLIC_VERCEL_URL ||
+    process.env.VERCEL_URL ||
+    'z-zh.lol'
+
+  return siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+}
+
 export default siteConfig({
   // the site's root Notion page (required)
   rootNotionPageId: '',
@@ -9,7 +21,7 @@ export default siteConfig({
 
   // basic site info (required)
   name: '3R1CCHENG',
-  domain: 'it',
+  domain: getSiteDomain(),
   author: 'Zeoihou Cheng',
 
   // open graph metadata (optional)
