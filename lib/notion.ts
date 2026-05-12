@@ -152,7 +152,9 @@ export async function fetchCollectionData(
       )
       const reducerResults = collectionData.result?.reducerResults
       if (!reducerResults) {
-        return
+        throw new Error(
+          `fetchCollectionData: no reducerResults for collection ${collectionId} view ${collectionViewId}`
+        )
       }
 
       const collectionRecordMap = unwrapRecordMap({
