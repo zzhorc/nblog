@@ -193,10 +193,61 @@ export async function fetchCollectionData(
 }
 
 export async function getPage(pageId: string): Promise<ExtendedRecordMap> {
-  let recordMap = await notion.getPage(pageId)
+  // Fetch initial page chunk directly instead of using notion.getPage().
+  // Reason: notion.getPage() internally uses getPageContentBlockIds() to discover
+  // missing blocks, but the raw API response uses a double-nested block format:
+  //   block[id] = { value: { role, value: { type, content, ... } } }
+  // getPageContentBlockIds() reads block[id].value.content which is undefined in
+  // the double-nested format, so the fetchMissingBlocks loop finds ZERO pending
+  // blocks — leaving 100+ blocks unfetched and causing "missing block" errors in
+  // react-notion-x.
+  //
+  // Fix: fetch raw chunks, unwrap FIRST, then run fetchMissingBlocks on normalized data.
+  const rawPage = await notion.getPageRaw(pageId, {
+    chunkLimit: 100,
+    chunkNumber: 0
+  })
+  let recordMap = rawPage.recordMap as ExtendedRecordMap
+  if (!recordMap?.block) {
+    throw new Error(`Notion page not found "${pageId}"`)
+  }
 
-  // Unwrap double-nested structure from Notion API
+  // Initialize empty maps (same as notion.getPage does internally)
+  recordMap.collection = recordMap.collection ?? {}
+  recordMap.collection_view = recordMap.collection_view ?? {}
+  recordMap.notion_user = recordMap.notion_user ?? {}
+  recordMap.collection_query = {}
+  recordMap.signed_urls = {}
+
+  // Unwrap BEFORE fetchMissingBlocks so getPageContentBlockIds can traverse content
   recordMap = unwrapRecordMap(recordMap)
+
+  // Now fetch all referenced but missing blocks (this works because data is unwrapped)
+  while (true) {
+    const pendingBlockIds = getPageContentBlockIds(recordMap).filter(
+      (id) => !recordMap.block[id]
+    )
+    if (!pendingBlockIds.length) break
+
+    const newBlockData = await notion
+      .getBlocks(pendingBlockIds, {})
+      .then((res) => res.recordMap.block)
+
+    // Newly fetched blocks are also double-nested — unwrap them
+    const unwrappedNewBlocks: Record<string, any> = {}
+    for (const [id, rec] of Object.entries(newBlockData)) {
+      unwrappedNewBlocks[id] = unwrapRecord(rec)
+    }
+
+    recordMap.block = { ...recordMap.block, ...unwrappedNewBlocks }
+  }
+
+  // Sign file URLs (same as notion.getPage does internally)
+  await notion.addSignedUrls({
+    recordMap,
+    contentBlockIds: getPageContentBlockIds(recordMap)
+  })
+
   recordMap = await fetchCollectionData(recordMap)
 
   if (navigationStyle !== 'default') {
