@@ -18,6 +18,7 @@
 
 .notion-page {
   padding-bottom: calc(max(5vh, 32px)) !important;
+  font-size: calc(16px * var(--notion-font-scale, 1));
   line-height: 1.65;
 }
 

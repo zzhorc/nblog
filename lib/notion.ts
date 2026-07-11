@@ -15,7 +15,8 @@ import pMemoize from 'p-memoize'
 import {
   isPreviewImageSupportEnabled,
   navigationLinks,
-  navigationStyle
+  navigationStyle,
+  notionCollectionQueryLimit
 } from './config'
 import { getTweetsMap } from './get-tweets'
 import { notion } from './notion-api'
@@ -77,7 +78,9 @@ function unwrapRecord(record: any) {
   return record
 }
 
-export function unwrapRecordMap(recordMap: ExtendedRecordMap): ExtendedRecordMap {
+export function unwrapRecordMap(
+  recordMap: ExtendedRecordMap
+): ExtendedRecordMap {
   return {
     ...recordMap,
     block: Object.fromEntries(
@@ -101,8 +104,27 @@ export function unwrapRecordMap(recordMap: ExtendedRecordMap): ExtendedRecordMap
   }
 }
 
+function compactRecordMap(recordMap: ExtendedRecordMap): ExtendedRecordMap {
+  for (const record of Object.values(recordMap.block || {})) {
+    const block = record?.value as any
+    if (!block) continue
+
+    // Collaborative editing metadata is not used by react-notion-x and can
+    // account for a large part of the serialized page payload.
+    delete block.crdt_data
+    delete block.crdt_format_version
+  }
+
+  return recordMap
+}
+
 export async function fetchCollectionData(
-  recordMap: ExtendedRecordMap
+  recordMap: ExtendedRecordMap,
+  {
+    limit = notionCollectionQueryLimit
+  }: {
+    limit?: number
+  } = {}
 ): Promise<ExtendedRecordMap> {
   recordMap.collection_query ??= {}
 
@@ -139,15 +161,14 @@ export async function fetchCollectionData(
         return
       }
 
-      const collectionView =
-        recordMap.collection_view[collectionViewId]?.value
+      const collectionView = recordMap.collection_view[collectionViewId]?.value
 
       const collectionData = await notion.getCollectionData(
         collectionId,
         collectionViewId,
         collectionView,
         {
-          limit: 999
+          limit
         }
       )
       const reducerResults = collectionData.result?.reducerResults
@@ -192,7 +213,7 @@ export async function fetchCollectionData(
   return recordMap
 }
 
-export async function getPage(pageId: string): Promise<ExtendedRecordMap> {
+async function getPageImpl(pageId: string): Promise<ExtendedRecordMap> {
   // Fetch initial page chunk directly instead of using notion.getPage().
   // Reason: notion.getPage() internally uses getPageContentBlockIds() to discover
   // missing blocks, but the raw API response uses a double-nested block format:
@@ -224,8 +245,9 @@ export async function getPage(pageId: string): Promise<ExtendedRecordMap> {
 
   // Now fetch all referenced but missing blocks (this works because data is unwrapped)
   while (true) {
+    const blocks = recordMap.block
     const pendingBlockIds = getPageContentBlockIds(recordMap).filter(
-      (id) => !recordMap.block[id]
+      (id) => !blocks[id]
     )
     if (!pendingBlockIds.length) break
 
@@ -267,13 +289,20 @@ export async function getPage(pageId: string): Promise<ExtendedRecordMap> {
 
   if (isPreviewImageSupportEnabled) {
     const previewImageMap = await getPreviewImageMap(recordMap)
-      ; (recordMap as any).preview_images = previewImageMap
+    ;(recordMap as any).preview_images = previewImageMap
   }
 
   await getTweetsMap(recordMap)
 
-  return recordMap
+  return compactRecordMap(recordMap)
 }
+
+// Reuse a completed page briefly inside a warm server process. This mainly
+// deduplicates concurrent ISR/API requests without making edits wait long.
+export const getPage = pMemoize(getPageImpl, {
+  cache: new ExpiryMap(10_000),
+  cacheKey: (...args) => JSON.stringify(args)
+})
 
 export async function search(params: SearchParams): Promise<SearchResults> {
   return notion.search(params)

@@ -12,7 +12,7 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "deploy": "vercel deploy",
@@ -35,18 +35,23 @@
     "@keyvhq/core": "^1.6.9",
     "@keyvhq/redis": "^1.6.10",
     "@react-icons/all-files": "^4.1.0",
+    "@swc/helpers": "0.5.15",
     "classnames": "^2.5.1",
     "expiry-map": "^2.0.0",
     "fathom-client": "^3.4.1",
+    "is-url-superb": "6.1.0",
     "katex": "^0.16.28",
     "ky": "^1.8.1",
     "lqip-modern": "^2.2.1",
+    "memoize": "10.2.0",
     "next": "^16.2.0-canary.8",
+    "normalize-url": "8.1.1",
     "notion-client": "7.7.0",
     "notion-types": "7.7.0",
     "notion-utils": "7.7.0",
     "p-map": "^7.0.3",
     "p-memoize": "^7.1.1",
+    "p-queue": "8.1.1",
     "posthog-js": "^1.249.4",
     "prismjs": "^1.30.0",
     "react": "^19.1.1",
@@ -74,11 +79,6 @@
   "overrides": {
     "cacheable-request": {
       "keyv": "npm:@keyvhq/core@~1.6.6"
-    }
-  },
-  "pnpmConfig": {
-    "patchedDependencies": {
-      "notion-utils@7.7.0": "patches/notion-utils.patch"
     }
   },
   "prettier": "@fisch0920/config/prettier",

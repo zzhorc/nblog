@@ -134,7 +134,7 @@
     flex-direction: column;
   }
 
-  .footer>div {
+  .footer > div {
     margin-top: 1em;
   }
 
@@ -187,44 +187,36 @@
   background: #e5f2e8;
 }
 
-@media (max-width: 1360px) {
-  .githubCorner {
-    display: none;
-  }
-}
-
-.githubCorner:hover .octoArm {
-  animation: octocat-wave 560ms ease-in-out;
-}
-
-@keyframes octocat-wave {
-
-  0%,
-  100% {
-    transform: rotate(0);
-  }
-
-  20%,
-  60% {
-    transform: rotate(-25deg);
-  }
-
-  40%,
-  80% {
-    transform: rotate(10deg);
-  }
-}
-
-@media (max-width: 500px) {
-  .githubCorner:hover .octoArm {
-    animation: none;
-  }
-
-  .githubCorner .octoArm {
-    animation: octocat-wave 560ms ease-in-out;
-  }
-}
-
 .hidden {
   visibility: hidden;
+}
+
+.fontScaleControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.fontScaleLabel {
+  color: inherit;
+  font-size: 0.85em;
+  line-height: 1;
+  opacity: 0.7;
+  user-select: none;
+}
+
+.fontScaleButton {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0 8px;
+}
+
+.fontScaleButton:disabled {
+  cursor: default;
+  opacity: 0.35;
 }

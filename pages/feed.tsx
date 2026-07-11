@@ -1,15 +1,46 @@
 import type { GetServerSideProps } from 'next'
 import { type ExtendedRecordMap } from 'notion-types'
-import {
-  getBlockTitle,
-  getPageProperty
-} from 'notion-utils'
+import { getBlockTitle, getPageProperty } from 'notion-utils'
 import RSS from 'rss'
 
 import * as config from '@/lib/config'
 import { getSiteMap } from '@/lib/get-site-map'
 import { getCanonicalPageUrl } from '@/lib/map-page-url'
 import { notionBlocksToHtml } from '@/lib/notion-to-html'
+
+const datePropertyNames = [
+  'Published',
+  'Published Date',
+  '发布日期',
+  '发布',
+  'Date',
+  '日期',
+  'Last Updated',
+  'Last Edited Time'
+]
+
+function getValidDate(value: unknown): Date | undefined {
+  const timestamp = Array.isArray(value) ? value[0] : value
+  if (typeof timestamp !== 'number' && typeof timestamp !== 'string') {
+    return undefined
+  }
+
+  const date = new Date(timestamp)
+  return Number.isNaN(date.getTime()) ? undefined : date
+}
+
+function getFeedItemDate(block: any, recordMap: ExtendedRecordMap): Date {
+  for (const propertyName of datePropertyNames) {
+    const date = getValidDate(getPageProperty(propertyName, block, recordMap))
+    if (date) return date
+  }
+
+  return (
+    getValidDate(block.last_edited_time) ??
+    getValidDate(block.created_time) ??
+    new Date(0)
+  )
+}
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   if (req.method !== 'GET') {
@@ -27,32 +58,25 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   const feed = new RSS({
     title: config.name,
     site_url: config.host,
-    feed_url: `${config.host}/feed.xml`,
+    feed_url: `${config.host}/feed`,
     language: config.language,
     ttl: ttlMinutes
   })
 
-  // Build inverse map: pageId -> canonicalPath (for URL generation)
-  const inverseCanonicalMap: Record<string, string> = {}
-  for (const [path, id] of Object.entries(siteMap.canonicalPageMap)) {
-    inverseCanonicalMap[id!] = path
-  }
+  const canonicalPageIds = new Set(Object.values(siteMap.canonicalPageMap))
+  const items = []
 
-  // Iterate pageMap keys — this preserves Notion's page traversal order
   for (const pageId of Object.keys(siteMap.pageMap)) {
-    // Skip pages that don't have a canonical path (e.g. root page)
-    if (!inverseCanonicalMap[pageId]) continue
+    if (!canonicalPageIds.has(pageId)) continue
 
     const recordMap = siteMap.pageMap[pageId] as ExtendedRecordMap
     if (!recordMap) continue
 
-    const keys = Object.keys(recordMap?.block || {})
-    const block = recordMap?.block?.[keys[0]!]?.value
+    const block = recordMap.block?.[pageId]?.value
     if (!block) continue
 
     const isBlogPost =
-      block.type === 'page' &&
-      block.parent_table === 'collection'
+      block.type === 'page' && block.parent_table === 'collection'
     if (!isBlogPost) {
       continue
     }
@@ -64,27 +88,24 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
     const url = getCanonicalPageUrl(config.site, recordMap)(pageId)
     if (!url) continue
 
-    const lastUpdatedTime = getPageProperty<number>(
-      'Last Updated',
-      block,
-      recordMap
-    )
-    const publishedTime = getPageProperty<number>('Published', block, recordMap)
-    const date = lastUpdatedTime
-      ? new Date(lastUpdatedTime)
-      : publishedTime
-        ? new Date(publishedTime)
-        : new Date()
-    const fullContent = notionBlocksToHtml(recordMap, pageId)
+    items.push({
+      title,
+      url,
+      date: getFeedItemDate(block, recordMap),
+      description,
+      fullContent: notionBlocksToHtml(recordMap, pageId)
+    })
+  }
 
+  for (const { title, url, date, description, fullContent } of items.toSorted(
+    (a, b) => b.date.getTime() - a.date.getTime()
+  )) {
     feed.item({
       title,
       url,
       date,
       description,
-      custom_elements: [
-        { 'content:encoded': fullContent || description }
-      ]
+      custom_elements: [{ 'content:encoded': fullContent || description }]
     })
   }
 

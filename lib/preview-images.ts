@@ -1,3 +1,4 @@
+import ExpiryMap from 'expiry-map'
 import ky from 'ky'
 import lqip from 'lqip-modern'
 import {
@@ -55,8 +56,6 @@ async function createPreviewImage(
 
     const body = await ky(url).arrayBuffer()
     const result = await lqip(body)
-    console.log('lqip', { ...result.metadata, url, cacheKey })
-
     const previewImage = {
       originalWidth: result.metadata.originalWidth,
       originalHeight: result.metadata.originalHeight,
@@ -77,9 +76,7 @@ async function createPreviewImage(
   }
 }
 
-import ExpiryMap from 'expiry-map'
-
 export const getPreviewImage = pMemoize(createPreviewImage, {
-  cache: new ExpiryMap(3600000), // 1 hour TTL
+  cache: new ExpiryMap(3_600_000), // 1 hour TTL
   cacheKey: (...args) => JSON.stringify(args)
 })

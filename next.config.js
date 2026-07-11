@@ -10,19 +10,6 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 export default withBundleAnalyzer({
   staticPageGenerationTimeout: 300,
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'CDN-Cache-Control',
-            value: 'max-age=60, must-revalidate'
-          }
-        ]
-      }
-    ]
-  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'www.notion.so' },
@@ -33,9 +20,9 @@ export default withBundleAnalyzer({
       { protocol: 'https', hostname: 's3.us-west-2.amazonaws.com' }
     ],
     formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 86_400,
     dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    unoptimized: true
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;"
   },
 
   webpack: (config) => {

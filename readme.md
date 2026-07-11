@@ -9,12 +9,12 @@
 - 🖼️ **自定义品牌** — 自定义 Logo 显示在 Header、页面图标和浏览器 Favicon
 - 🌓 **亮色/暗色主题** — 支持一键切换，毛玻璃效果 Header
 - 📱 **响应式 Gallery** — 数据库页面以自适应网格卡片展示，支持圆角阴影和 hover 高亮
-- ⚡ **ISR 增量更新** — 60 秒自动刷新页面内容，Vercel Edge CDN 缓存加速
+- ⚡ **ISR 增量更新** — 60 秒自动刷新页面内容
 - 🔄 **On-Demand Revalidation** — 提供 `/api/revalidate` 接口，支持通过 token 手动触发页面更新
 - 📰 **RSS 订阅** — 自动生成 RSS Feed（`/feed`），所有数据库页面自动收录
 - � **全站搜索** — CMD+K / CMD+P 快速搜索
 - 📋 **自动目录** — 文章自动生成侧边目录导航，Scrollspy 高亮当前章节
-- 🏎️ **极速加载** — LQIP 图片预览 + next/image 优化 + AVIF/WebP 格式支持
+- 🏎️ **极速加载** — 可选 LQIP 图片预览 + AVIF/WebP 格式支持
 - 🔗 **友好 URL** — 自动生成 slugified URL，支持自定义 Slug 属性
 - 🐦 **社交集成** — 自动生成 Open Graph 预览图，Footer 集成 Twitter/GitHub/邮箱/RSS 链接
 - 📐 **LaTeX 公式** — 支持 KaTeX 数学公式渲染
@@ -27,16 +27,16 @@ git clone https://github.com/zzhorc/nblog.git
 cd nblog
 
 # 2. 安装依赖
-npm install
+pnpm install
 
 # 3. 编辑配置
 # 修改 site.config.ts 中的 rootNotionPageId、name、domain 等
 
 # 4. 本地开发
-npm run dev
+pnpm dev
 
 # 5. 部署到 Vercel
-npm run deploy
+pnpm deploy
 ```
 
 > [!IMPORTANT]
@@ -46,36 +46,52 @@ npm run deploy
 
 所有配置集中在 [site.config.ts](./site.config.ts)：
 
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
-| `rootNotionPageId` | Notion 根页面 ID（必填） | — |
-| `name` | 站点名称 | — |
-| `domain` | 站点域名 | — |
-| `author` | 作者名 | — |
-| `defaultPageIcon` | 默认页面图标路径 | `/logo.png` |
-| `navigationStyle` | 导航栏样式 | `custom` |
-| `isPreviewImageSupportEnabled` | LQIP 图片预览 | `true` |
-| `isRedisEnabled` | Redis 缓存预览图 | `false` |
+| 配置项             | 说明                     | 默认值      |
+| ------------------ | ------------------------ | ----------- |
+| `rootNotionPageId` | Notion 根页面 ID（必填） | —           |
+| `name`             | 站点名称                 | —           |
+| `domain`           | 站点域名                 | —           |
+| `author`           | 作者名                   | —           |
+| `defaultPageIcon`  | 默认页面图标路径         | `/logo.png` |
+| `navigationStyle`  | 导航栏样式               | `custom`    |
+| `isRedisEnabled`   | Redis 缓存预览图         | `false`     |
 
 ### 环境变量
 
-| 变量 | 说明 |
-|------|------|
-| `NEXT_PUBLIC_NOTION_PAGE_ID` | Notion 页面 ID（可选，覆盖 config） |
-| `REVALIDATE_TOKEN` | On-Demand Revalidation 密钥 |
-| `REDIS_HOST` | Redis 地址（可选） |
-| `REDIS_PASSWORD` | Redis 密码（可选） |
-| `NEXT_PUBLIC_FATHOM_ID` | Fathom 统计（可选） |
-| `NEXT_PUBLIC_POSTHOG_ID` | PostHog 统计（可选） |
+| 变量                         | 说明                                           |
+| ---------------------------- | ---------------------------------------------- |
+| `NEXT_PUBLIC_NOTION_PAGE_ID` | Notion 页面 ID（可选，覆盖 config）            |
+| `REVALIDATE_TOKEN`           | On-Demand Revalidation 密钥                    |
+| `ISR_REVALIDATE_SECONDS`     | ISR 刷新间隔（默认 60 秒）                     |
+| `PREVIEW_IMAGES_ENABLED`     | 是否生成 LQIP 图片占位图（默认关闭）           |
+| `PREBUILD_NOTION_PAGES`      | 是否在构建时预生成全部 Notion 页面（默认关闭） |
+| `NOTION_COLLECTION_LIMIT`    | Collection 查询条数上限（默认 100）            |
+| `REDIS_HOST`                 | Redis 地址（可选）                             |
+| `REDIS_PASSWORD`             | Redis 密码（可选）                             |
+| `NEXT_PUBLIC_FATHOM_ID`      | Fathom 统计（可选）                            |
+| `NEXT_PUBLIC_POSTHOG_ID`     | PostHog 统计（可选）                           |
 
 ## ISR 与缓存策略
 
-| 层级 | TTL | 说明 |
-|------|-----|------|
-| ISR Revalidation | 60s | `getStaticProps` revalidate 间隔 |
-| Vercel Edge CDN | 60s | `CDN-Cache-Control: max-age=60` |
-| Notion API 缓存 | 60s | ExpiryMap 内存缓存 |
-| On-Demand Revalidation | 即时 | `GET /api/revalidate?secret=<token>` |
+| 层级                   | TTL             | 说明                                          |
+| ---------------------- | --------------- | --------------------------------------------- |
+| ISR Revalidation       | 默认 60s        | 页面缓存刷新间隔                              |
+| Vercel ISR Cache       | 由 Next.js 管理 | 不额外给 HTML 加长 CDN 缓存，避免影响主动刷新 |
+| 页面数据缓存           | 10s             | 热实例内合并短时间内的重复请求                |
+| Site Map 缓存          | 60s             | 缓存页面路径映射                              |
+| On-Demand Revalidation | 即时            | `GET /api/revalidate?secret=<token>`          |
+
+推荐在 Notion 内容更新后主动刷新页面：
+
+```bash
+# 刷新首页
+curl 'https://你的域名/api/revalidate?secret=<REVALIDATE_TOKEN>'
+
+# 刷新首页 + 指定文章页
+curl 'https://你的域名/api/revalidate?secret=<REVALIDATE_TOKEN>&path=/your-slug'
+```
+
+这样生产访问平时走 ISR 缓存，更新时又能立刻生成新页面。
 
 ## 自定义 Logo
 
@@ -109,12 +125,6 @@ nblog/
 - [Notion](https://notion.so) — 内容管理系统
 - [LXGW WenKai](https://github.com/lxgw/LxgwWenKai) — 中文正文字体
 - [KaTeX](https://katex.org/) — LaTeX 公式渲染
-
-## 致谢
-
-本项目基于 [Travis Fischer](https://github.com/transitive-bullshit) 的 [nextjs-notion-starter-kit](https://github.com/transitive-bullshit/nextjs-notion-starter-kit) 开发。
-
-原作者文档：[transitivebullsh.it/nextjs-notion-starter-kit](https://transitivebullsh.it/nextjs-notion-starter-kit)。
 
 ## License
 

@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
+  notion-client@7.7.0:
+    hash: edd810a07b4cdfa59add22ec91c57facc15fa4383e7e221c0056534af781f7e3
+    path: patches/notion-client@7.7.0.patch
   notion-utils:
     hash: e9e933470bb3e03d44cd30e51cc5703476e0d4b9b0b448a994eebf615f705f34
     path: patches/notion-utils.patch
@@ -25,6 +28,9 @@ importers:
       '@react-icons/all-files':
         specifier: ^4.1.0
         version: 4.1.0(react@19.2.4)
+      '@swc/helpers':
+        specifier: 0.5.15
+        version: 0.5.15
       classnames:
         specifier: ^2.5.1
         version: 2.5.1
@@ -34,6 +40,9 @@ importers:
       fathom-client:
         specifier: ^3.4.1
         version: 3.7.2
+      is-url-superb:
+        specifier: 6.1.0
+        version: 6.1.0
       katex:
         specifier: ^0.16.28
         version: 0.16.28
@@ -43,12 +52,18 @@ importers:
       lqip-modern:
         specifier: ^2.2.1
         version: 2.2.1
+      memoize:
+        specifier: 10.2.0
+        version: 10.2.0
       next:
         specifier: ^16.2.0-canary.8
         version: 16.2.0-canary.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      normalize-url:
+        specifier: 8.1.1
+        version: 8.1.1
       notion-client:
         specifier: 7.7.0
-        version: 7.7.0
+        version: 7.7.0(patch_hash=edd810a07b4cdfa59add22ec91c57facc15fa4383e7e221c0056534af781f7e3)
       notion-types:
         specifier: 7.7.0
         version: 7.7.0
@@ -61,6 +76,9 @@ importers:
       p-memoize:
         specifier: ^7.1.1
         version: 7.1.1
+      p-queue:
+        specifier: 8.1.1
+        version: 8.1.1
       posthog-js:
         specifier: ^1.249.4
         version: 1.345.3
@@ -4576,7 +4594,7 @@ snapshots:
 
   normalize-url@8.1.1: {}
 
-  notion-client@7.7.0:
+  notion-client@7.7.0(patch_hash=edd810a07b4cdfa59add22ec91c57facc15fa4383e7e221c0056534af781f7e3):
     dependencies:
       notion-types: 7.7.0
       notion-utils: 7.7.0(patch_hash=e9e933470bb3e03d44cd30e51cc5703476e0d4b9b0b448a994eebf615f705f34)

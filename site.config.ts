@@ -7,7 +7,7 @@ function getSiteDomain() {
     process.env.VERCEL_PROJECT_PRODUCTION_URL ||
     process.env.NEXT_PUBLIC_VERCEL_URL ||
     process.env.VERCEL_URL ||
-    'z-zh.lol'
+    'zzh.lol'
 
   return siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
 }
@@ -22,14 +22,14 @@ export default siteConfig({
   // basic site info (required)
   name: '3R1CCHENG',
   domain: getSiteDomain(),
-  author: 'Zeoihou Cheng',
+  author: 'zeoihou cheng',
 
   // open graph metadata (optional)
-  description: 'Zeoihou Cheng\'s Blog',
+  description: "zeoihou cheng's Blog",
 
   // social usernames (optional)
-  twitter: ' ',
-  github: 'https://github.com/zzhorc',
+  // twitter: ' ',
+  github: 'zzhorc',
   //linkedin: ' ',
   // mastodon: '#', // optional mastodon profile URL, provides link verification
   newsletter: 'mailto:zeoihoucheng@gmail.com', // optional newsletter URL
@@ -40,9 +40,6 @@ export default siteConfig({
   defaultPageIcon: '/logo.png',
   defaultPageCover: null,
   defaultPageCoverPosition: 0.5,
-
-  // whether or not to enable support for LQIP preview images (optional)
-  isPreviewImageSupportEnabled: true,
 
   // whether or not redis is enabled for caching generated preview images (optional)
   // NOTE: if you enable redis, you need to set the `REDIS_HOST` and `REDIS_PASSWORD`
