@@ -1,3 +1,4 @@
+import ExpiryMap from 'expiry-map'
 import { type ExtendedRecordMap } from 'notion-types'
 import { getPageTweetIds } from 'notion-utils'
 import pMap from 'p-map'
@@ -5,7 +6,12 @@ import pMemoize from 'p-memoize'
 import { getTweet as getTweetData } from 'react-tweet/api'
 
 import type { ExtendedTweetRecordMap } from './types'
+import { isrRevalidateSeconds } from './config'
 import { db } from './db'
+
+// Keep tweet data fresh whenever ISR regenerates a page. This applies to both
+// the shared Keyv cache and the warm-server memoization cache below.
+const tweetCacheTtl = Math.max(isrRevalidateSeconds, 1) * 1000
 
 export async function getTweetsMap(
   recordMap: ExtendedRecordMap
@@ -30,7 +36,9 @@ export async function getTweetsMap(
 async function getTweetImpl(tweetId: string): Promise<any> {
   if (!tweetId) return null
 
-  const cacheKey = `tweet:${tweetId}`
+  // Version the key so Redis entries written before the TTL was introduced do
+  // not keep serving stale tweets after this deploy.
+  const cacheKey = `tweet:v2:${tweetId}`
 
   try {
     try {
@@ -46,7 +54,7 @@ async function getTweetImpl(tweetId: string): Promise<any> {
     const tweetData = (await getTweetData(tweetId)) || null
 
     try {
-      await db.set(cacheKey, tweetData)
+      await db.set(cacheKey, tweetData, tweetCacheTtl)
     } catch (err: any) {
       // ignore redis errors
       console.warn(`redis error set "${cacheKey}"`, err.message)
@@ -59,4 +67,7 @@ async function getTweetImpl(tweetId: string): Promise<any> {
   }
 }
 
-export const getTweet = pMemoize(getTweetImpl)
+export const getTweet = pMemoize(getTweetImpl, {
+  cache: new ExpiryMap(tweetCacheTtl),
+  cacheKey: (...args) => JSON.stringify(args)
+})
