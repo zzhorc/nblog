@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 const allowedHosts = new Set(['www.notion.so', 'notion.so'])
+const notionUserAgent =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
 
 export default async function handler(
   req: NextApiRequest,
@@ -34,6 +36,9 @@ export default async function handler(
 
   try {
     const upstream = await fetch(imageUrl, {
+      headers: {
+        'user-agent': notionUserAgent
+      },
       signal: AbortSignal.timeout(15_000)
     })
 
