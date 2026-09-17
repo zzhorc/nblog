@@ -24,6 +24,7 @@ import { NotionPageHeader } from './NotionPageHeader'
 import { Page404 } from './Page404'
 import { PageAside } from './PageAside'
 import { PageHead } from './PageHead'
+import { PasswordGate } from './PasswordGate'
 import styles from './styles.module.css'
 
 // -----------------------------------------------------------------------------
@@ -189,10 +190,22 @@ export function NotionPage({
   site,
   recordMap,
   error,
-  pageId
+  pageId,
+  isPasswordProtected
 }: types.PageProps) {
   const router = useRouter()
   const lite = useSearchParam('lite')
+  const [unlockedPage, setUnlockedPage] = React.useState<{
+    pageId: string
+    recordMap: types.ExtendedRecordMap
+  }>()
+
+  const unlockedRecordMap =
+    unlockedPage && unlockedPage.pageId === pageId
+      ? unlockedPage.recordMap
+      : undefined
+  const isLocked = !!isPasswordProtected && !unlockedRecordMap
+  const activeRecordMap = unlockedRecordMap || recordMap
 
   const components = React.useMemo<Partial<NotionComponents>>(
     () => ({
@@ -227,56 +240,67 @@ export function NotionPage({
     if (lite) params.lite = lite
 
     const searchParams = new URLSearchParams(params)
-    return site ? mapPageUrl(site, recordMap!, searchParams) : undefined
-  }, [site, recordMap, lite])
+    return site ? mapPageUrl(site, activeRecordMap!, searchParams) : undefined
+  }, [site, activeRecordMap, lite])
 
-  const keys = Object.keys(recordMap?.block || {})
-  const block = recordMap?.block?.[keys[0]!]?.value
+  const keys = Object.keys(activeRecordMap?.block || {})
+  const block = activeRecordMap?.block?.[keys[0]!]?.value
 
   // const isRootPage =
   //   parsePageId(block?.id) === parsePageId(site?.rootNotionPageId)
   const isBlogPost =
     block?.type === 'page' && block?.parent_table === 'collection'
 
-  const showTableOfContents = !!isBlogPost
+  const showTableOfContents = !!isBlogPost && !isLocked
   const minTableOfContentsItems = 3
 
   const pageAside = React.useMemo(
-    () => (
-      <PageAside
-        block={block!}
-        recordMap={recordMap!}
-        isBlogPost={isBlogPost}
-      />
-    ),
-    [block, recordMap, isBlogPost]
+    () =>
+      !isLocked && activeRecordMap ? (
+        <PageAside
+          block={block!}
+          recordMap={activeRecordMap}
+          isBlogPost={isBlogPost}
+        />
+      ) : undefined,
+    [block, activeRecordMap, isBlogPost, isLocked]
   )
 
-  const footer = React.useMemo(() => <Footer />, [])
+  const footer =
+    isLocked && pageId ? (
+      <PasswordGate
+        pageId={pageId}
+        onUnlock={(unlockedMap) =>
+          setUnlockedPage({ pageId, recordMap: unlockedMap })
+        }
+      />
+    ) : (
+      <Footer />
+    )
 
   if (router.isFallback) {
     return <Loading />
   }
 
-  if (error || !site || !block) {
+  if (error || !site || !block || !activeRecordMap) {
     return <Page404 site={site} pageId={pageId} error={error} />
   }
 
-  const title = getBlockTitle(block, recordMap) || site.name
+  const title = getBlockTitle(block, activeRecordMap) || site.name
 
   const canonicalPageUrl = config.isDev
     ? undefined
-    : getCanonicalPageUrl(site, recordMap)(pageId)
+    : getCanonicalPageUrl(site, activeRecordMap)(pageId)
 
   const socialImage = mapImageUrl(
-    getPageProperty<string>('Social Image', block, recordMap) ||
+    getPageProperty<string>('Social Image', block, activeRecordMap) ||
       (block as PageBlock).format?.page_cover ||
       config.defaultPageCover,
     block
   )
 
   const socialDescription =
-    getPageProperty<string>('Description', block, recordMap) ||
+    getPageProperty<string>('Description', block, activeRecordMap) ||
     config.description
 
   return (
@@ -301,11 +325,11 @@ export function NotionPage({
         )}
         darkMode={hasMounted && isDarkMode}
         components={components}
-        recordMap={recordMap}
+        recordMap={activeRecordMap}
         rootPageId={site.rootNotionPageId}
         rootDomain={site.domain}
         fullPage={!isLiteMode}
-        previewImages={!!recordMap.preview_images}
+        previewImages={!!activeRecordMap.preview_images}
         showCollectionViewDropdown={false}
         showTableOfContents={showTableOfContents}
         minTableOfContentsItems={minTableOfContentsItems}

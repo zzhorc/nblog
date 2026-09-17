@@ -7,6 +7,11 @@ import { environment, pageUrlAdditions, pageUrlOverrides, site } from './config'
 import { db } from './db'
 import { getSiteMap } from './get-site-map'
 import { getPage } from './notion'
+import {
+  createLockedRecordMap,
+  getPagePassword,
+  sanitizeRecordMap
+} from './password-protection'
 
 export async function resolveNotionPage(
   domain: string,
@@ -85,6 +90,15 @@ export async function resolveNotionPage(
     recordMap = await getPage(pageId)
   }
 
-  const props: PageProps = { site, recordMap, pageId }
+  const password = getPagePassword(recordMap, pageId)
+  const publicRecordMap = password
+    ? createLockedRecordMap(recordMap, pageId)
+    : sanitizeRecordMap(recordMap)
+  const props: PageProps = {
+    site,
+    recordMap: publicRecordMap,
+    pageId,
+    isPasswordProtected: password !== undefined
+  }
   return { ...props, ...(await acl.pageAcl(props)) }
 }

@@ -18,6 +18,7 @@
 - 🔗 **友好 URL** — 自动生成 slugified URL，支持自定义 Slug 属性
 - 🐦 **社交集成** — 自动生成 Open Graph 预览图，Footer 集成 Twitter/GitHub/邮箱/RSS 链接
 - 📐 **LaTeX 公式** — 支持 KaTeX 数学公式渲染
+- 🔐 **文章密码** — 标题和简介保持公开，正文通过服务端验证后才会下发
 
 ## 快速开始
 
@@ -66,10 +67,23 @@ pnpm deploy
 | `PREVIEW_IMAGES_ENABLED`     | 是否生成 LQIP 图片占位图（默认关闭）           |
 | `PREBUILD_NOTION_PAGES`      | 是否在构建时预生成全部 Notion 页面（默认关闭） |
 | `NOTION_COLLECTION_LIMIT`    | Collection 查询条数上限（默认 100）            |
+| `REDIS_ENABLED`              | 启用 Redis 共享缓存与限流状态                  |
 | `REDIS_HOST`                 | Redis 地址（可选）                             |
 | `REDIS_PASSWORD`             | Redis 密码（可选）                             |
+| `REDIS_URL`                  | 完整 Redis 连接地址（可选）                    |
 | `NEXT_PUBLIC_FATHOM_ID`      | Fathom 统计（可选）                            |
 | `NEXT_PUBLIC_POSTHOG_ID`     | PostHog 统计（可选）                           |
+| `NOTION_PASSWORD_PROPERTIES` | 密码属性名，逗号分隔（默认 `Password,密码`）   |
+
+## 文章密码
+
+1. 在文章数据库中新增一个文本属性，名为 `Password` 或 `密码`。
+2. 留空表示文章公开；填入内容后，访问文章 URL 需先输入密码。
+3. 密码属性不会出现在页面属性、首页数据或解锁后的浏览器数据中。受保护正文也不会进入 RSS 或站内搜索结果。
+
+同一 IP 对同一文章每秒最多尝试一次；连续错误 5 次后锁定 5 分钟。本地与单实例环境会使用内存记录；在 Vercel 等多实例生产环境中，请启用 Redis，使限流状态在所有实例间共享。
+
+给已发布文章新增、修改或移除密码后，请立即调用 On-Demand Revalidation 刷新首页和文章路径，避免 ISR 在缓存周期内继续提供旧版页面。
 
 ## ISR 与缓存策略
 

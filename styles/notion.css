@@ -22,6 +22,11 @@
   line-height: 1.65;
 }
 
+/* Two font-scale steps above the 16px default, scoped to article content. */
+.notion-page:not(.index-page) .notion-page-content-inner {
+  font-size: calc(18px * var(--notion-font-scale, 1));
+}
+
 .index-page {
   --notion-max-width: 1200px;
 }
