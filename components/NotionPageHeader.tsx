@@ -9,6 +9,7 @@ import { isSearchEnabled, navigationLinks, navigationStyle } from '@/lib/config'
 import { useDarkMode } from '@/lib/use-dark-mode'
 import { useFontScale } from '@/lib/use-font-scale'
 
+import { CollectionFilterButton } from './CollectionFilter'
 import styles from './styles.module.css'
 
 function ToggleThemeButton() {
@@ -139,6 +140,7 @@ export function NotionPageHeader({
 
           <ToggleThemeButton />
           <FontScaleControls />
+          <CollectionFilterButton />
 
           {isSearchEnabled && <Search block={block} title={null} />}
         </div>

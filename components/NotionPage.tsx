@@ -12,12 +12,18 @@ import { EmbeddedTweet, TweetNotFound, TweetSkeleton } from 'react-tweet'
 import { useSearchParam } from 'react-use'
 
 import type * as types from '@/lib/types'
+import {
+  countMatchingArticles,
+  filterRecordMapByOptions,
+  getCollectionFilterOptions
+} from '@/lib/collection-filter'
 import * as config from '@/lib/config'
 import { mapImageUrl } from '@/lib/map-image-url'
 import { getCanonicalPageUrl, mapPageUrl } from '@/lib/map-page-url'
 import { searchNotion } from '@/lib/search-notion'
 import { useDarkMode } from '@/lib/use-dark-mode'
 
+import { CollectionFilterProvider } from './CollectionFilter'
 import { Footer } from './Footer'
 import { Loading } from './Loading'
 import { NotionPageHeader } from './NotionPageHeader'
@@ -206,6 +212,9 @@ export function NotionPage({
       : undefined
   const isLocked = !!isPasswordProtected && !unlockedRecordMap
   const activeRecordMap = unlockedRecordMap || recordMap
+  const [selectedFilterKeys, setSelectedFilterKeys] = React.useState<
+    Set<string>
+  >(() => new Set())
 
   const components = React.useMemo<Partial<NotionComponents>>(
     () => ({
@@ -278,6 +287,63 @@ export function NotionPage({
       <Footer />
     )
 
+  const collectionFilterOptions = React.useMemo(
+    () =>
+      activeRecordMap && pageId === site?.rootNotionPageId
+        ? getCollectionFilterOptions(activeRecordMap)
+        : [],
+    [activeRecordMap, pageId, site?.rootNotionPageId]
+  )
+  const filteredRecordMap = React.useMemo(
+    () =>
+      activeRecordMap
+        ? filterRecordMapByOptions(
+            activeRecordMap,
+            collectionFilterOptions,
+            selectedFilterKeys
+          )
+        : undefined,
+    [activeRecordMap, collectionFilterOptions, selectedFilterKeys]
+  )
+  const matchingArticleCount = React.useMemo(
+    () =>
+      activeRecordMap
+        ? countMatchingArticles(
+            activeRecordMap,
+            collectionFilterOptions,
+            selectedFilterKeys
+          )
+        : 0,
+    [activeRecordMap, collectionFilterOptions, selectedFilterKeys]
+  )
+  const toggleFilterOption = React.useCallback((key: string) => {
+    setSelectedFilterKeys((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+  const clearFilterOptions = React.useCallback(() => {
+    setSelectedFilterKeys(new Set())
+  }, [])
+  const collectionFilterValue = React.useMemo(
+    () => ({
+      options: collectionFilterOptions,
+      selectedKeys: selectedFilterKeys,
+      matchingArticleCount,
+      toggleOption: toggleFilterOption,
+      clearOptions: clearFilterOptions
+    }),
+    [
+      clearFilterOptions,
+      collectionFilterOptions,
+      matchingArticleCount,
+      selectedFilterKeys,
+      toggleFilterOption
+    ]
+  )
+
   if (router.isFallback) {
     return <Loading />
   }
@@ -318,30 +384,32 @@ export function NotionPage({
       {isLiteMode && <BodyClassName className='notion-lite' />}
       {hasMounted && isDarkMode && <BodyClassName className='dark-mode' />}
 
-      <NotionRenderer
-        bodyClassName={cs(
-          styles.notion,
-          pageId === site.rootNotionPageId && 'index-page'
-        )}
-        darkMode={hasMounted && isDarkMode}
-        components={components}
-        recordMap={activeRecordMap}
-        rootPageId={site.rootNotionPageId}
-        rootDomain={site.domain}
-        fullPage={!isLiteMode}
-        previewImages={!!activeRecordMap.preview_images}
-        showCollectionViewDropdown={false}
-        showTableOfContents={showTableOfContents}
-        minTableOfContentsItems={minTableOfContentsItems}
-        defaultPageIcon={config.defaultPageIcon}
-        defaultPageCover={config.defaultPageCover}
-        defaultPageCoverPosition={config.defaultPageCoverPosition}
-        mapPageUrl={siteMapPageUrl}
-        mapImageUrl={mapImageUrl}
-        searchNotion={config.isSearchEnabled ? searchNotion : undefined}
-        pageAside={pageAside}
-        footer={footer}
-      />
+      <CollectionFilterProvider value={collectionFilterValue}>
+        <NotionRenderer
+          bodyClassName={cs(
+            styles.notion,
+            pageId === site.rootNotionPageId && 'index-page'
+          )}
+          darkMode={hasMounted && isDarkMode}
+          components={components}
+          recordMap={filteredRecordMap!}
+          rootPageId={site.rootNotionPageId}
+          rootDomain={site.domain}
+          fullPage={!isLiteMode}
+          previewImages={!!activeRecordMap.preview_images}
+          showCollectionViewDropdown={false}
+          showTableOfContents={showTableOfContents}
+          minTableOfContentsItems={minTableOfContentsItems}
+          defaultPageIcon={config.defaultPageIcon}
+          defaultPageCover={config.defaultPageCover}
+          defaultPageCoverPosition={config.defaultPageCoverPosition}
+          mapPageUrl={siteMapPageUrl}
+          mapImageUrl={mapImageUrl}
+          searchNotion={config.isSearchEnabled ? searchNotion : undefined}
+          pageAside={pageAside}
+          footer={footer}
+        />
+      </CollectionFilterProvider>
     </>
   )
 }
