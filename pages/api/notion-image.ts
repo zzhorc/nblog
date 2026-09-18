@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
+import { notion } from '@/lib/notion-api'
+
 const allowedHosts = new Set(['www.notion.so', 'notion.so'])
 const retryStatusCodes = new Set([408, 425, 429, 500, 502, 503, 504])
 const maxFetchAttempts = 3
@@ -37,7 +39,7 @@ export default async function handler(
   }
 
   try {
-    const upstream = await fetchNotionImage(imageUrl)
+    const upstream = await fetchNotionImageWithFreshSignature(imageUrl)
 
     if (!upstream.ok) {
       return res.status(upstream.status).end()
@@ -59,6 +61,90 @@ export default async function handler(
   } catch (err) {
     console.error('notion image proxy error', err)
     return res.status(502).json({ message: 'Failed to fetch image' })
+  }
+}
+
+async function fetchNotionImageWithFreshSignature(
+  imageUrl: URL
+): Promise<Response> {
+  const source = getNotionImageSource(imageUrl)
+
+  // Old uploaded images contain a stable block reference but an unsigned S3
+  // source. Resolve that source to a fresh short-lived URL at request time so
+  // the page itself never depends on an expiring URL cached in its HTML.
+  if (source && isLegacyUploadedImage(source)) {
+    const signedUrl = await getFreshSignedUrl(imageUrl, source)
+    if (signedUrl) {
+      return fetchNotionImage(new URL(signedUrl))
+    }
+  }
+
+  try {
+    const response = await fetchNotionImage(imageUrl)
+    if (response.ok || !source || !isSignableNotionSource(source)) {
+      return response
+    }
+
+    const signedUrl = await getFreshSignedUrl(imageUrl, source)
+    if (!signedUrl) {
+      return response
+    }
+
+    await response.body?.cancel()
+    return fetchNotionImage(new URL(signedUrl))
+  } catch (err) {
+    if (source && isSignableNotionSource(source)) {
+      const signedUrl = await getFreshSignedUrl(imageUrl, source)
+      if (signedUrl) {
+        return fetchNotionImage(new URL(signedUrl))
+      }
+    }
+
+    throw err
+  }
+}
+
+function getNotionImageSource(imageUrl: URL): string | undefined {
+  try {
+    return decodeURIComponent(imageUrl.pathname.slice('/image/'.length))
+  } catch {
+    return undefined
+  }
+}
+
+function isLegacyUploadedImage(source: string): boolean {
+  return (
+    source.includes('secure.notion-static.com') ||
+    source.includes('prod-files-secure')
+  )
+}
+
+function isSignableNotionSource(source: string): boolean {
+  return source.startsWith('attachment:') || isLegacyUploadedImage(source)
+}
+
+async function getFreshSignedUrl(
+  imageUrl: URL,
+  source: string
+): Promise<string | undefined> {
+  const blockId = imageUrl.searchParams.get('id')
+  if (!blockId) return undefined
+
+  try {
+    const { signedUrls } = await notion.getSignedFileUrls([
+      {
+        permissionRecord: {
+          table: 'block',
+          id: blockId
+        },
+        url: source
+      }
+    ])
+
+    return signedUrls[0] || undefined
+  } catch (err) {
+    console.warn('notion image signing error', err)
+    return undefined
   }
 }
 
