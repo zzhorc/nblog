@@ -118,6 +118,22 @@ function compactRecordMap(recordMap: ExtendedRecordMap): ExtendedRecordMap {
   return recordMap
 }
 
+function applySignedImageUrls(recordMap: ExtendedRecordMap) {
+  for (const [blockId, signedUrl] of Object.entries(
+    recordMap.signed_urls || {}
+  )) {
+    const block = recordMap.block[blockId]?.value
+    const source = block?.properties?.source?.[0]
+
+    if (block?.type === 'image' && source && signedUrl) {
+      // react-notion-x intentionally falls back from file.notion.so to the
+      // block source. Keep that fallback fresh for legacy uploaded images whose
+      // original prod-files-secure URL no longer works without a signature.
+      source[0] = signedUrl
+    }
+  }
+}
+
 export async function fetchCollectionData(
   recordMap: ExtendedRecordMap,
   {
@@ -269,6 +285,7 @@ async function getPageImpl(pageId: string): Promise<ExtendedRecordMap> {
     recordMap,
     contentBlockIds: getPageContentBlockIds(recordMap)
   })
+  applySignedImageUrls(recordMap)
 
   recordMap = await fetchCollectionData(recordMap)
 

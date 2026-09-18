@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 const allowedHosts = new Set(['www.notion.so', 'notion.so'])
+const retryStatusCodes = new Set([408, 425, 429, 500, 502, 503, 504])
+const maxFetchAttempts = 3
 const notionUserAgent =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
 
@@ -35,12 +37,7 @@ export default async function handler(
   }
 
   try {
-    const upstream = await fetch(imageUrl, {
-      headers: {
-        'user-agent': notionUserAgent
-      },
-      signal: AbortSignal.timeout(15_000)
-    })
+    const upstream = await fetchNotionImage(imageUrl)
 
     if (!upstream.ok) {
       return res.status(upstream.status).end()
@@ -63,4 +60,34 @@ export default async function handler(
     console.error('notion image proxy error', err)
     return res.status(502).json({ message: 'Failed to fetch image' })
   }
+}
+
+async function fetchNotionImage(imageUrl: URL): Promise<Response> {
+  for (let attempt = 0; attempt < maxFetchAttempts; attempt++) {
+    try {
+      const response = await fetch(imageUrl, {
+        headers: {
+          'user-agent': notionUserAgent
+        },
+        signal: AbortSignal.timeout(15_000)
+      })
+
+      if (
+        !retryStatusCodes.has(response.status) ||
+        attempt === maxFetchAttempts - 1
+      ) {
+        return response
+      }
+
+      await response.body?.cancel()
+    } catch (err) {
+      if (attempt === maxFetchAttempts - 1) {
+        throw err
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt))
+  }
+
+  throw new Error('Failed to fetch Notion image')
 }

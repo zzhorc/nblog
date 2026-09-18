@@ -10,6 +10,10 @@ import { defaultPageCover, defaultPageIcon, isServer } from './config'
 const ROOT_PAGE_ICON_ATTACHMENT =
   'attachment:b49c0d70-303b-4c64-9635-5196dc4eb149:0_image_25F.png'
 
+// Collection covers are rendered as relatively small cards. Asking Notion for
+// a thumbnail avoids downloading multi-megabyte originals for the article list.
+const COLLECTION_COVER_WIDTH = 640
+
 export const mapImageUrl = (url: string | undefined, block: Block) => {
   if (!url) {
     return undefined
@@ -30,10 +34,24 @@ export const mapImageUrl = (url: string | undefined, block: Block) => {
   // server-side consumers on the original URL and proxy browser requests
   // through our own origin instead.
   if (!isServer && mappedUrl && shouldProxyNotionImage(mappedUrl)) {
-    return `/api/notion-image?url=${encodeURIComponent(mappedUrl)}`
+    const imageUrl = new URL(mappedUrl)
+
+    if (isCollectionCover(url, block)) {
+      imageUrl.searchParams.set('width', String(COLLECTION_COVER_WIDTH))
+    }
+
+    return `/api/notion-image?url=${encodeURIComponent(imageUrl.toString())}`
   }
 
   return mappedUrl
+}
+
+function isCollectionCover(url: string, block: Block): boolean {
+  return (
+    block.type === 'page' &&
+    block.parent_table === 'collection' &&
+    block.format?.page_cover === url
+  )
 }
 
 function shouldProxyNotionImage(url: string): boolean {
