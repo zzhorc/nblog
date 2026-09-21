@@ -18,6 +18,7 @@ import {
   getCollectionFilterOptions
 } from '@/lib/collection-filter'
 import * as config from '@/lib/config'
+import { countArticleWords } from '@/lib/count-article-words'
 import { mapImageUrl } from '@/lib/map-image-url'
 import { getCanonicalPageUrl, mapPageUrl } from '@/lib/map-page-url'
 import { searchNotion } from '@/lib/search-notion'
@@ -260,6 +261,39 @@ export function NotionPage({
   const isBlogPost =
     block?.type === 'page' && block?.parent_table === 'collection'
 
+  const articleWordCount = React.useMemo(
+    () =>
+      isBlogPost && !isLocked && block && activeRecordMap
+        ? countArticleWords(block, activeRecordMap)
+        : 0,
+    [activeRecordMap, block, isBlogPost, isLocked]
+  )
+
+  const rendererComponents = React.useMemo<Partial<NotionComponents>>(() => {
+    function CollectionWithWordCount(props: any) {
+      const isArticleProperties = props.block?.id === block?.id
+
+      return (
+        <>
+          <Collection {...props} />
+          {isArticleProperties && isBlogPost && !isLocked && (
+            <div
+              className={styles.articleWordCount}
+              aria-label={`全文字数 ${articleWordCount} 字`}
+            >
+              全文 {articleWordCount.toLocaleString('zh-CN')} 字
+            </div>
+          )}
+        </>
+      )
+    }
+
+    return {
+      ...components,
+      Collection: CollectionWithWordCount
+    }
+  }, [articleWordCount, block?.id, components, isBlogPost, isLocked])
+
   const showTableOfContents = !!isBlogPost && !isLocked
   const minTableOfContentsItems = 3
 
@@ -391,7 +425,7 @@ export function NotionPage({
             pageId === site.rootNotionPageId && 'index-page'
           )}
           darkMode={hasMounted && isDarkMode}
-          components={components}
+          components={rendererComponents}
           recordMap={filteredRecordMap!}
           rootPageId={site.rootNotionPageId}
           rootDomain={site.domain}
