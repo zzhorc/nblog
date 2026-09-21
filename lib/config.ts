@@ -21,7 +21,7 @@ import {
 } from './types'
 
 export const rootNotionPageId: string = parsePageId(
-  getSiteConfig('rootNotionPageId'),
+  process.env.NEXT_PUBLIC_NOTION_PAGE_ID || getSiteConfig('rootNotionPageId'),
   { uuid: false }
 )!
 
@@ -47,6 +47,21 @@ export const inversePageUrlOverrides = invertPageUrlOverrides(pageUrlOverrides)
 
 export const environment = process.env.NODE_ENV || 'development'
 export const isDev = environment === 'development'
+
+function getNumberEnv(key: string, defaultValue: number): number {
+  const value = process.env[key]
+  if (!value) return defaultValue
+
+  const numberValue = Number(value)
+  return Number.isFinite(numberValue) ? numberValue : defaultValue
+}
+
+function getBooleanEnv(key: string, defaultValue: boolean): boolean {
+  const value = process.env[key]
+  if (!value) return defaultValue
+
+  return value === '1' || value.toLowerCase() === 'true'
+}
 
 // general site config
 export const name: string = getRequiredSiteConfig('name')
@@ -85,9 +100,23 @@ export const defaultPageCoverPosition: number = getSiteConfig(
   0.5
 )
 
-// Optional whether or not to enable support for LQIP preview images
-export const isPreviewImageSupportEnabled: boolean = getSiteConfig(
-  'isPreviewImageSupportEnabled',
+// Optional whether or not to enable support for LQIP preview images.
+// Disabled by default because generating LQIP placeholders for Notion images
+// is the slowest part of cold ISR renders on Vercel.
+export const isPreviewImageSupportEnabled: boolean = getBooleanEnv(
+  'PREVIEW_IMAGES_ENABLED',
+  false
+)
+
+export const isrRevalidateSeconds = getNumberEnv('ISR_REVALIDATE_SECONDS', 60)
+
+export const notionCollectionQueryLimit = getNumberEnv(
+  'NOTION_COLLECTION_LIMIT',
+  100
+)
+
+export const shouldPrebuildNotionPages = getBooleanEnv(
+  'PREBUILD_NOTION_PAGES',
   false
 )
 
@@ -136,16 +165,13 @@ export const isServer = typeof window === 'undefined'
 
 export const port = getEnv('PORT', '3000')
 export const host = isDev ? `http://localhost:${port}` : `https://${domain}`
-export const apiHost = isDev
-  ? host
-  : `https://${process.env.VERCEL_URL || domain}`
 
 export const apiBaseUrl = `/api`
 
 export const api = {
   searchNotion: `${apiBaseUrl}/search-notion`,
-  getNotionPageInfo: `${apiBaseUrl}/notion-page-info`,
-  getSocialImage: `${apiBaseUrl}/social-image`
+  getSocialImage: `${apiBaseUrl}/social-image`,
+  unlockPage: `${apiBaseUrl}/unlock-page`
 }
 
 // ----------------------------------------------------------------------------
@@ -169,6 +195,8 @@ export const posthogId = process.env.NEXT_PUBLIC_POSTHOG_ID
 export const posthogConfig: Partial<PostHogConfig> = {
   api_host: 'https://app.posthog.com'
 }
+
+export const revalidateToken = process.env.REVALIDATE_TOKEN
 
 function cleanPageUrlMap(
   pageUrlMap: PageUrlOverridesMap,

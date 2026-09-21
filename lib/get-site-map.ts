@@ -1,15 +1,12 @@
-import {
-  getAllPagesInSpace,
-  getBlockValue,
-  getPageProperty,
-  uuidToId
-} from 'notion-utils'
+import ExpiryMap from 'expiry-map'
+import { getAllPagesInSpace, getPageProperty } from 'notion-utils'
 import pMemoize from 'p-memoize'
 
 import type * as types from './types'
 import * as config from './config'
 import { includeNotionIdInUrls } from './config'
 import { getCanonicalPageId } from './get-canonical-page-id'
+import { fetchCollectionData, unwrapRecordMap } from './notion'
 import { notion } from './notion-api'
 
 const uuid = !!includeNotionIdInUrls
@@ -27,17 +24,19 @@ export async function getSiteMap(): Promise<types.SiteMap> {
 }
 
 const getAllPages = pMemoize(getAllPagesImpl, {
+  cache: new ExpiryMap(60_000),
   cacheKey: (...args) => JSON.stringify(args)
 })
 
-const getPage = async (pageId: string, opts?: any) => {
-  console.log('\nnotion getPage', uuidToId(pageId))
-  return notion.getPage(pageId, {
-    kyOptions: {
+const getPage = async (pageId: string) => {
+  const recordMap = await notion.getPage(pageId, {
+    ofetchOptions: {
       timeout: 30_000
     },
-    ...opts
+    signFileUrls: false
   })
+
+  return fetchCollectionData(unwrapRecordMap(recordMap), { limit: 999 })
 }
 
 async function getAllPagesImpl(
@@ -65,7 +64,7 @@ async function getAllPagesImpl(
         throw new Error(`Error loading page "${pageId}"`)
       }
 
-      const block = getBlockValue(recordMap.block[pageId])
+      const block = recordMap.block[pageId]?.value
       if (
         !(getPageProperty<boolean | null>('Public', block!, recordMap) ?? true)
       ) {

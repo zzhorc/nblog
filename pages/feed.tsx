@@ -1,18 +1,57 @@
 import type { GetServerSideProps } from 'next'
 import { type ExtendedRecordMap } from 'notion-types'
-import {
-  getBlockParentPage,
-  getBlockTitle,
-  getBlockValue,
-  getPageProperty,
-  idToUuid
-} from 'notion-utils'
+import { getBlockTitle, getPageProperty } from 'notion-utils'
+import pMap from 'p-map'
 import RSS from 'rss'
 
 import * as config from '@/lib/config'
 import { getSiteMap } from '@/lib/get-site-map'
-import { getSocialImageUrl } from '@/lib/get-social-image-url'
 import { getCanonicalPageUrl } from '@/lib/map-page-url'
+import { getPage } from '@/lib/notion'
+import { notionBlocksToHtml } from '@/lib/notion-to-html'
+import { isPasswordProtected } from '@/lib/password-protection'
+
+const datePropertyNames = [
+  'Published',
+  'Published Date',
+  '发布日期',
+  '发布',
+  'Date',
+  '日期',
+  'Last Updated',
+  'Last Edited Time'
+]
+
+function getValidDate(value: unknown): Date | undefined {
+  const timestamp = Array.isArray(value) ? value[0] : value
+  if (typeof timestamp !== 'number' && typeof timestamp !== 'string') {
+    return undefined
+  }
+
+  const date = new Date(timestamp)
+  return Number.isNaN(date.getTime()) ? undefined : date
+}
+
+function getFeedItemDate(block: any, recordMap: ExtendedRecordMap): Date {
+  for (const propertyName of datePropertyNames) {
+    const date = getValidDate(getPageProperty(propertyName, block, recordMap))
+    if (date) return date
+  }
+
+  return (
+    getValidDate(block.last_edited_time) ??
+    getValidDate(block.created_time) ??
+    new Date(0)
+  )
+}
+
+interface FeedItem {
+  title: string
+  url: string
+  date: Date
+  description: string
+  fullContent: string
+}
 
 export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   if (req.method !== 'GET') {
@@ -30,58 +69,66 @@ export const getServerSideProps: GetServerSideProps = async ({ req, res }) => {
   const feed = new RSS({
     title: config.name,
     site_url: config.host,
-    feed_url: `${config.host}/feed.xml`,
+    feed_url: `${config.host}/feed`,
     language: config.language,
     ttl: ttlMinutes
   })
 
-  for (const pagePath of Object.keys(siteMap.canonicalPageMap)) {
-    const pageId = siteMap.canonicalPageMap[pagePath]!
-    const recordMap = siteMap.pageMap[pageId] as ExtendedRecordMap
-    if (!recordMap) continue
+  const canonicalPageIds = new Set(Object.values(siteMap.canonicalPageMap))
+  const items = (
+    await pMap(
+      Object.keys(siteMap.pageMap),
+      async (pageId): Promise<FeedItem | undefined> => {
+        if (!canonicalPageIds.has(pageId)) return undefined
 
-    const keys = Object.keys(recordMap?.block || {})
-    const block = getBlockValue(recordMap?.block?.[keys[0]!])
-    if (!block) continue
+        const metadataRecordMap = siteMap.pageMap[pageId] as ExtendedRecordMap
+        if (!metadataRecordMap) return undefined
 
-    const parentPage = getBlockParentPage(block, recordMap)
-    const isBlogPost =
-      block.type === 'page' &&
-      block.parent_table === 'collection' &&
-      parentPage?.id === idToUuid(config.rootNotionPageId)
-    if (!isBlogPost) {
-      continue
-    }
+        const block = metadataRecordMap.block?.[pageId]?.value
+        if (
+          !block ||
+          block.type !== 'page' ||
+          block.parent_table !== 'collection'
+        ) {
+          return undefined
+        }
 
-    const title = getBlockTitle(block, recordMap) || config.name
-    const description =
-      getPageProperty<string>('Description', block, recordMap) ||
-      config.description
-    const url = getCanonicalPageUrl(config.site, recordMap)(pageId)
-    const lastUpdatedTime = getPageProperty<number>(
-      'Last Updated',
-      block,
-      recordMap
+        const title = getBlockTitle(block, metadataRecordMap) || config.name
+        const description =
+          getPageProperty<string>('Description', block, metadataRecordMap) ||
+          config.description
+        const url = getCanonicalPageUrl(config.site, metadataRecordMap)(pageId)
+        if (!url) return undefined
+
+        const protectedArticle = isPasswordProtected(metadataRecordMap, pageId)
+        const fullContent = protectedArticle
+          ? description
+          : notionBlocksToHtml(await getPage(pageId), pageId)
+
+        return {
+          title,
+          url,
+          date: getFeedItemDate(block, metadataRecordMap),
+          description,
+          fullContent
+        }
+      },
+      // Full Notion pages can take several seconds each on a cold start. Keep
+      // enough parallelism for the feed to finish within a serverless request
+      // without sending all page requests at once.
+      { concurrency: 6 }
     )
-    const publishedTime = getPageProperty<number>('Published', block, recordMap)
-    const date = lastUpdatedTime
-      ? new Date(lastUpdatedTime)
-      : publishedTime
-        ? new Date(publishedTime)
-        : new Date()
-    const socialImageUrl = getSocialImageUrl(pageId)
+  ).filter((item): item is FeedItem => !!item)
 
+  for (const { title, url, date, description, fullContent } of items.toSorted(
+    (a, b) => b.date.getTime() - a.date.getTime()
+  )) {
     feed.item({
       title,
       url,
       date,
       description,
-      enclosure: socialImageUrl
-        ? {
-            url: socialImageUrl,
-            type: 'image/jpeg'
-          }
-        : undefined
+      custom_elements: [{ 'content:encoded': fullContent || description }]
     })
   }
 

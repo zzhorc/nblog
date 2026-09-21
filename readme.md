@@ -1,197 +1,266 @@
-<p align="center">
-  <a href="https://transitivebullsh.it/nextjs-notion-starter-kit">
-    <img alt="Example article page" src="https://user-images.githubusercontent.com/552829/160132094-12875e09-41ec-450a-80fc-ae8cd488129d.jpg" width="689">
-  </a>
-</p>
+<div align="center">
+  <h1>nblog</h1>
+  <p><strong>Write in Notion. Publish with Next.js.</strong></p>
+  <p>Notion CMS &nbsp;·&nbsp; <code>react-notion-x</code> &nbsp;·&nbsp; ISR</p>
+  <p>
+    <a href="README.zh-CN.md">中文文档</a> ·
+    <a href="#quick-start">Quick start</a> ·
+    <a href="#deployment">Deployment</a>
+  </p>
+</div>
 
-# Next.js Notion Starter Kit
+<table align="center" width="100%">
+  <tr>
+    <td width="33%" valign="top" align="center">
+      <h3>01&nbsp;&nbsp;Content</h3>
+      Notion content management<br />
+      Code, equations &amp; media<br />
+      Custom article URLs<br />
+      Article password protection
+    </td>
+    <td width="33%" valign="top" align="center">
+      <h3>02&nbsp;&nbsp;Reading</h3>
+      Search &amp; category/tag filters<br />
+      Table of contents &amp; word count<br />
+      Light/dark themes<br />
+      Font-size controls
+    </td>
+    <td width="33%" valign="top" align="center">
+      <h3>03&nbsp;&nbsp;Publishing</h3>
+      ISR &amp; on-demand refresh<br />
+      RSS feed<br />
+      Sitemap<br />
+      Social preview images
+    </td>
+  </tr>
+</table>
 
-> The perfect starter kit for building websites with Next.js and Notion.
+## Architecture
 
-[![Build Status](https://github.com/transitive-bullshit/nextjs-notion-starter-kit/actions/workflows/build.yml/badge.svg)](https://github.com/transitive-bullshit/nextjs-notion-starter-kit/actions/workflows/build.yml) [![Prettier Code Formatting](https://img.shields.io/badge/code_style-prettier-brightgreen.svg)](https://prettier.io)
+```text
+Public Notion root page + collection databases
+                |
+                v
+notion-client -> normalized ExtendedRecordMap -> short-lived server cache
+                |                                   |
+                |                                   +-> sitemap / RSS / search allow-list
+                v
+Next.js Pages Router -> react-notion-x -> browser
+                |
+                +-> API routes: revalidate, search, unlock, social image, image proxy
+```
 
-## Intro
+`lib/notion.ts` normalizes the current Notion response shape before `react-notion-x` receives it, fills missing blocks and collection data, signs media URLs, and fetches optional tweet and image-preview data. Article pages receive a Notion `ExtendedRecordMap`, not HTML; features such as the word count operate directly on that block tree.
 
-This repo is what I use to power my personal blog and portfolio site [transitivebullsh.it](https://transitivebullsh.it).
+## Requirements
 
-It uses Notion as a CMS, [react-notion-x](https://github.com/NotionX/react-notion-x), [Next.js](https://nextjs.org/), and [Vercel](https://vercel.com).
+- Node.js 18 or newer
+- pnpm 10 (the version is pinned in `package.json`)
+- A Notion root page that is published to the web
+- A deployment target that can run Next.js Pages Router API routes; Vercel is the supported path in this repository
 
-## Features
+No Notion Integration token is used. Content is read through Notion's public-page endpoints, so unpublished pages cannot be served.
 
-- Setup only takes a few minutes ([single config file](./site.config.ts)) 💪
-- Robust support for Notion content via [react-notion-x](https://github.com/NotionX/react-notion-x)
-- Built using Next.js, TS, and React
-- Excellent page speeds
-- Smooth image previews
-- Automatic social images
-- Automatic pretty URLs
-- Automatic table of contents
-- Full support for dark mode
-- Quick search via CMD+K / CMD+P
-- Responsive for different devices
-- Optimized for Next.js and Vercel
-
-## Demos
-
-- [Default demo](https://nextjs-notion-starter-kit.transitivebullsh.it) - Deployed from the `main` branch
-- [My site](https://transitivebullsh.it) - Deployed from the `transitive-bullshit` branch
-
-## Setup
-
-**All config is defined in [site.config.ts](./site.config.ts).**
-
-This project requires a recent version of Node.js (we recommend >= 16).
-
-1. Fork / clone this repo
-2. Change a few values in [site.config.ts](./site.config.ts)
-3. `npm install`
-4. `npm run dev` to test locally
-5. `npm run deploy` to deploy to vercel 💪
-6. Double check your [Vercel project settings](#vercel-configuration)
-
-I tried to make configuration as easy as possible — All you really need to do to get started is edit `rootNotionPageId`.
-
-We recommend duplicating the [default page](https://notion.so/7875426197cf461698809def95960ebf) as a starting point, but you can use any public notion page you want.
-
-Make sure your root Notion page is **public** and then copy the link to your clipboard. Extract the last part of the URL that looks like `7875426197cf461698809def95960ebf`, which is your page's Notion ID.
-
-In order to find your Notion workspace ID (optional), just load any of your site's pages into your browser and open up the developer console. There will be a global variable that you can access called `block` which is the Notion data for the current page. If you enter `block.space_id`, it will print out your page's workspace ID.
-
-I recommend setting up a collection on your home page that contains all of your articles / projects / content. There are no structural constraints on your Notion workspace, however, so feel free to add content as you normally would in Notion.
-
-### Vercel Configuration
-
-**Social media preview images won't work by default on Vercel**. You'll need to ensure that your site doesn't require auth.
-
-From your Vercel project settings, you'll want to **disable Vercel Authentication** from `Project -> Settings -> Deployment Protection`.
-
-![How to disable Vercel Deployment Protection setting](https://github.com/user-attachments/assets/a1eb5a1f-da7a-497e-b4f6-f7e851a6cd8a 'How to disable Vercel Deployment Protection setting which causes social media preview image endpoint to return 401 Unauthorized')
-
-💡 If you forget to do this your site will return `401 Unauthorized` responses when crawlers are trying to retrieve the images.
-
-## URL Paths
-
-The app defaults to slightly different URL paths in dev vs prod (though pasting any dev pathname into prod will work and vice-versa).
-
-In development, it will use `/nextjs-notion-blog-d1b5dcf8b9ff425b8aef5ce6f0730202` which is a slugified version of the page's title suffixed with its Notion ID. I've found that it's really useful to always have the Notion Page ID front and center during local development.
-
-In production, it will use `/nextjs-notion-blog` which is a bit nicer as it gets rid of the extra ID clutter.
-
-The mapping of Notion ID to slugified page titles is done automatically as part of the build process. Just keep in mind that if you plan on changing page titles over time, you probably want to make sure old links will still work, and we don't currently provide a solution for detecting old links aside from Next.js's built-in [support for redirects](https://nextjs.org/docs/api-reference/next.config.js/redirects).
-
-See [mapPageUrl](./lib/map-page-url.ts) and [getCanonicalPageId](https://github.com/NotionX/react-notion-x/blob/master/packages/notion-utils/src/get-canonical-page-id.ts) for more details.
-
-You can override the default slug generation on a per-page basis by adding a `Slug` text property to your database. Any page which has a `Slug` property will use that as its slug.
-
-NOTE: if you have multiple pages in your workspace with the same slugified name, the app will throw an error letting you know that there are duplicate URL pathnames.
-
-## Preview Images
-
-<p align="center">
-  <img alt="Example preview image" src="https://user-images.githubusercontent.com/552829/160142320-35343317-aa9e-4710-bcf7-67e5cdec586d.gif" width="458">
-</p>
-
-We use [next/image](https://nextjs.org/docs/api-reference/next/image) to serve images efficiently, with preview images optionally generated via [lqip-modern](https://github.com/transitive-bullshit/lqip-modern). This gives us extremely optimized image support for sexy smooth images.
-
-Preview images are **enabled by default**, but they can be slow to generate, so if you want to disable them, set `isPreviewImageSupportEnabled` to `false` in `site.config.ts`.
-
-### Redis
-
-If you want to cache generated preview images to speed up subsequent builds, you'll need to first set up an external [Redis](https://redis.io) data store. To enable redis caching, set `isRedisEnabled` to `true` in `site.config.ts` and then set `REDIS_HOST` and `REDIS_PASSWORD` environment variables to point to your redis instance.
-
-You can do this locally by adding a `.env` file:
+## Quick start
 
 ```bash
-REDIS_HOST='TODO'
-REDIS_PASSWORD='TODO'
+git clone https://github.com/zzhorc/nblog.git
+cd nblog
+pnpm install
 ```
 
-If you're not sure which Redis provider to use, we recommend [Redis Labs](https://redis.com), which provides a free plan.
+Set the root page and site identity in [site.config.ts](site.config.ts):
 
-Note that preview images and redis caching are both optional features. If you’d rather not deal with them, just disable them in your site config.
-
-## Styles
-
-All CSS styles that customize Notion content are located in [styles/notion.css](./styles/notion.css). They mainly target global CSS classes exported by react-notion-x [styles.css](https://github.com/NotionX/react-notion-x/blob/master/packages/react-notion-x/src/styles.css).
-
-Every notion block gets its own unique classname, so you can target individual blocks like this:
-
-```css
-.notion-block-260baa77f1e1428b97fb14ac99c7c385 {
-  display: none;
-}
+```ts
+export default siteConfig({
+  rootNotionPageId: 'your-notion-page-id',
+  rootNotionSpaceId: null,
+  name: 'My Blog',
+  domain: 'example.com',
+  author: 'Your name',
+  description: 'A short site description',
+  navigationStyle: 'custom'
+})
 ```
 
-## Dark Mode
+Then start the development server:
 
-<p align="center">
-  <img alt="Light Mode" src="https://transitive-bs.notion.site/image/https%3A%2F%2Fs3-us-west-2.amazonaws.com%2Fsecure.notion-static.com%2F83ea9f0f-4761-4c0b-b53e-1913627975fc%2Ftransitivebullsh.it_-opt.jpg?table=block&id=ed7e8f60-c6d1-449e-840b-5c7762505c44&spaceId=fde5ac74-eea3-4527-8f00-4482710e1af3&width=2000&userId=&cache=v2" width="45%">
-&nbsp; &nbsp; &nbsp; &nbsp;
-  <img alt="Dark Mode" src="https://transitive-bs.notion.site/image/https%3A%2F%2Fs3-us-west-2.amazonaws.com%2Fsecure.notion-static.com%2Fc0839d6c-7141-48df-8afd-69b27fed84aa%2Ftransitivebullsh.it__(1)-opt.jpg?table=block&id=23b11fe5-d6df-422d-9674-39cf7f547523&spaceId=fde5ac74-eea3-4527-8f00-4482710e1af3&width=2000&userId=&cache=v2" width="45%">
-</p>
+```bash
+pnpm dev
+```
 
-Dark mode is fully supported and can be toggled via the sun / moon icon in the footer.
+Open `http://localhost:3000`. The root page can contain normal Notion blocks and collection views. A collection page is treated as an article when its root block is a Notion database page.
 
-## Automatic Social Images
+## Site configuration
 
-<p align="center">
-  <img alt="Example social image" src="https://user-images.githubusercontent.com/552829/162001133-34d4cf24-123a-4569-a540-f683b22830d1.jpeg" width="600">
-</p>
+All durable site settings live in [site.config.ts](site.config.ts).
 
-All Open Graph and social meta tags are generated from your Notion content, which makes social sharing look professional by default.
+| Setting                                                           | Purpose                                                                                                 |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `rootNotionPageId`                                                | Required Notion root page ID. `NEXT_PUBLIC_NOTION_PAGE_ID` can override it at build/runtime.            |
+| `rootNotionSpaceId`                                               | Optional workspace ID guard for page resolution.                                                        |
+| `name`, `domain`, `author`, `description`, `language`             | Site identity, metadata, RSS language, and fallback values.                                             |
+| `defaultPageIcon`, `defaultPageCover`, `defaultPageCoverPosition` | Fallback Notion icon/cover presentation.                                                                |
+| `navigationStyle`, `navigationLinks`                              | Use Notion's default header or a custom header with internal page and external URL links.               |
+| `pageUrlOverrides`                                                | Maps a path such as `'/about'` to a Notion page ID. Overrides the generated canonical URL.              |
+| `includeNotionIdInUrls`                                           | Adds Notion IDs to generated URLs. Defaults to `true` in development and `false` in production.         |
+| `isSearchEnabled`                                                 | Enables or disables the search control and its API use.                                                 |
+| `isRedisEnabled`                                                  | Enables Redis-backed cache and password-rate-limit state.                                               |
+| Social settings                                                   | `twitter`, `github`, `linkedin`, `newsletter`, `youtube`, `zhihu`, and `mastodon` control footer links. |
 
-Social images are generated automatically using [Vercel OG Image Generation](https://vercel.com/docs/concepts/functions/edge-functions/og-image-generation). You can tweak the default React template for social images by editing [api/social-images.tsx](./pages/api/social-image.tsx).
+`NEXT_PUBLIC_SITE_CONFIG` may contain a JSON object with the same fields and overrides `site.config.ts`. Because it is public, never put passwords, tokens, or private URLs in it.
 
-You can view an example social image live in production [here](https://transitivebullsh.it/api/social-image?id=dfc7f709-ae3e-42c6-9292-f6543d5586f0).
+## Notion setup and properties
 
-## Automatic Table of Contents
+Publish the root page to the web first. Create article databases inside that public tree, then add only the properties you need. Notion controls the collection view layout, card fields, and ordering; nblog reads that structure rather than imposing a separate content model.
 
-<p align="center">
-  <img alt="Smooth ToC Scrollspy" src="https://www.notion.so/image/https%3A%2F%2Fs3-us-west-2.amazonaws.com%2Fsecure.notion-static.com%2Fcb2df62d-9028-440b-964b-117711450921%2Ftoc2.gif?table=block&id=d7e9951b-289c-4ff2-8b82-b0a61fe260b1&cache=v2" width="240">
-</p>
+### Properties read by nblog
 
-By default, every article page will have a table of contents displayed as an `aside` on desktop. It uses **scrollspy** logic to automatically update the current section as the user scrolls through your document, and makes it really easy to jump between different sections.
+| Notion property or page field                   | Suggested type             | Used by                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Title`                                         | Title                      | Required by Notion. It is the rendered page title and the fallback for generated URLs.                                                                                                                                                                                                                                            |
+| `Slug` or `slug`                                | Text                       | Canonical article path. If absent, nblog normalizes the title. `pageUrlOverrides` takes precedence over both.                                                                                                                                                                                                                     |
+| `Public`                                        | Checkbox                   | Defaults to `true` when absent. `false` removes a page from nblog's canonical map, sitemap, and search allow-list. It is discovery control, **not** an access-control boundary; do not use it for secrets. Hide cards in the originating Notion collection view when needed.                                                      |
+| `Password` or `密码`                            | Text                       | Enables body protection when non-empty. The initial page response contains metadata but not body blocks; a successful `POST /api/unlock-page` returns a sanitized record map. Other visible database properties remain metadata, so never store confidential data there. Set `NOTION_PASSWORD_PROPERTIES` to use different names. |
+| `Category`, `Categories`, `Catagory`, or `分类` | Select or multi-select     | Supplies root-page collection filters. Multiple selected options use OR matching.                                                                                                                                                                                                                                                 |
+| `Tag`, `Tags`, or `标签`                        | Select or multi-select     | Supplies root-page collection filters with the same OR matching.                                                                                                                                                                                                                                                                  |
+| `Description`                                   | Text                       | Article meta description and RSS fallback description.                                                                                                                                                                                                                                                                            |
+| `Social Image`                                  | Files or URL-like text     | Preferred page image for social metadata and generated Open Graph cards; falls back to the Notion cover, then the configured default cover.                                                                                                                                                                                       |
+| `Author`                                        | Text                       | Overrides the configured author in generated social-image cards.                                                                                                                                                                                                                                                                  |
+| `Published`                                     | Date                       | Formatted in article properties and used by the Open Graph card. RSS also accepts `Published Date`, `发布日期`, `发布`, `Date`, `日期`, `Last Updated`, and `Last Edited Time`, then falls back to the Notion edited/created timestamp.                                                                                           |
+| `Tweet`                                         | Text containing a Tweet ID | Adds like and repost intent buttons to the desktop article aside.                                                                                                                                                                                                                                                                 |
 
-If a page has less than `minTableOfContentsItems` (default 3), the table of contents will be hidden. It is also hidden on the index page and if the browser window is too small.
+The article word count is calculated in the browser from the same `ExtendedRecordMap` that renders the article. It does not add a Notion property or write anything back to Notion.
 
-This table of contents uses the same logic that Notion uses for its built-in Table of Contents block (see [getPageTableOfContents](https://github.com/NotionX/react-notion-x/blob/master/packages/notion-utils/src/get-page-table-of-contents.ts) for the underlying logic).
+### Password-protected articles
 
-## Responsive
+Password protection is meant to withhold body content from normal page, RSS, and search responses. It is not user authentication or encryption at rest.
 
-<p align="center">
-  <img alt="Mobile article page" src="https://user-images.githubusercontent.com/552829/160132983-c2dd5830-80b3-4a0e-a8f1-abab5dbeed11.jpg" width="300">
-</p>
+- Attempts are limited to one per article/IP per second.
+- Five failed attempts lock that article/IP pair for five minutes.
+- A single process uses in-memory state. Enable Redis in multi-instance production deployments so limits are shared.
+- After adding, changing, or removing a password on a published article, trigger on-demand revalidation to invalidate cached HTML promptly.
 
-All pages are designed to be responsive across common device sizes.
+## Environment variables
 
-## Analytics
+Create `.env.local` for local development. Do not commit it.
 
-Analytics are an optional feature that are easy to enable if you want.
+| Variable                     | Required                  | Description                                                                                                                           |
+| ---------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_NOTION_PAGE_ID` | No                        | Overrides `rootNotionPageId`.                                                                                                         |
+| `NEXT_PUBLIC_SITE_URL`       | Recommended in production | Public site URL or domain used to derive the configured domain. Vercel project URL variables are used automatically when present.     |
+| `NEXT_PUBLIC_SITE_CONFIG`    | No                        | Public JSON override for `site.config.ts`; do not include secrets.                                                                    |
+| `NOTION_API_BASE_URL`        | No                        | Overrides the Notion API base URL used by `notion-client`.                                                                            |
+| `ISR_REVALIDATE_SECONDS`     | No                        | ISR interval in seconds; defaults to `60`.                                                                                            |
+| `PREBUILD_NOTION_PAGES`      | No                        | Set to `true` to prebuild known Notion pages at build time. Default: `false`.                                                         |
+| `NOTION_COLLECTION_LIMIT`    | No                        | Maximum rows requested for a collection view. Default: `100`.                                                                         |
+| `PREVIEW_IMAGES_ENABLED`     | No                        | Enables LQIP image placeholders. This adds work to cold ISR renders. Default: `false`.                                                |
+| `REVALIDATE_TOKEN`           | Recommended               | Secret required by `/api/revalidate`.                                                                                                 |
+| `NOTION_PASSWORD_PROPERTIES` | No                        | Comma-separated password property names. Default: `Password,密码`.                                                                    |
+| `REDIS_ENABLED`              | No                        | Enables Redis when set to `true` or `1`; `isRedisEnabled` in config also enables it.                                                  |
+| `REDIS_URL`                  | Conditional               | Complete Redis connection URL. Alternatively provide `REDIS_HOST`, `REDIS_PASSWORD`, and optionally `REDIS_USER` (default `default`). |
+| `REDIS_NAMESPACE`            | No                        | Key namespace. Default: `preview-images`.                                                                                             |
+| `NEXT_PUBLIC_FATHOM_ID`      | No                        | Fathom site ID, disabled in development.                                                                                              |
+| `NEXT_PUBLIC_POSTHOG_ID`     | No                        | PostHog project ID.                                                                                                                   |
+| `ANALYZE`                    | No                        | Set to `true` when running a bundle-analysis build.                                                                                   |
 
-### Fathom Analytics
+## Content refresh and cache behavior
 
-[Fathom](https://usefathom.com/ref/42TFOZ) provides a lightweight alternative to Google Analytics.
+Normal Notion edits appear through ISR. The default page revalidation interval is 60 seconds. The server also keeps completed page fetches for 10 seconds and caches the site map for 60 seconds to collapse concurrent requests.
 
-To enable, just add a `NEXT_PUBLIC_FATHOM_ID` environment variable, which will only be used in production.
+For an immediate refresh, call the authenticated endpoint after a Notion edit:
 
-### PostHog Analytics
+```bash
+# Revalidate the home page (the home page is always included)
+curl 'https://example.com/api/revalidate?secret=REVALIDATE_TOKEN'
 
-[PostHog](https://posthog.com/) provides a lightweight, **open source** alternative to Google Analytics.
+# Revalidate home plus one canonical path
+curl 'https://example.com/api/revalidate?secret=REVALIDATE_TOKEN&path=/my-post'
 
-To enable, just add a `NEXT_PUBLIC_POSTHOG_ID` environment variable, which will only be used in production.
+# `paths` and `pageId` also accept comma-separated values
+curl 'https://example.com/api/revalidate?secret=REVALIDATE_TOKEN&paths=/post-a,/post-b'
+```
 
-## Environment Variables
+Replace `REVALIDATE_TOKEN` with the configured secret. Treat it like a password: do not put the value in a browser URL, repository, or public automation log.
 
-If you're using Redis, analytics, or any other feature which requires environment variables, then you'll need to [add them to your Vercel project](https://vercel.com/docs/concepts/projects/environment-variables).
+## Deployment
 
-If you want to test your redis builds with GitHub Actions, then you'll need to edit the [default build action](./.github/workflows/build.yml) to add `REDIS_HOST` and `REDIS_PASSWORD`. Here is an [example from my personal branch](https://github.com/transitive-bullshit/nextjs-notion-starter-kit/blob/transitive-bullshit/.github/workflows/build.yml#L17-L21). You'll also need to add these environment variables to your GitHub repo as [repository secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets).
+### Vercel
 
-## Contributing
+1. Push the repository to a Git provider and import it into Vercel.
+2. Add the production environment variables, especially `REVALIDATE_TOKEN`, your Redis variables when Redis is enabled, and `NEXT_PUBLIC_SITE_URL` for a custom domain.
+3. Set the custom domain in Vercel and use the same domain in `NEXT_PUBLIC_SITE_URL` or `site.config.ts`.
+4. Deploy. Vercel builds with `pnpm build` and serves ISR/API routes.
+5. For a public blog, configure Deployment Protection so anonymous readers and social crawlers can reach page, RSS, and Open Graph endpoints. Vercel Authentication will otherwise return `401` to them.
 
-See the [contribution guide](contributing.md) and join our amazing list of [contributors](https://github.com/transitive-bullshit/nextjs-notion-starter-kit/graphs/contributors)!
+To deploy from a terminal instead of Git integration:
+
+```bash
+pnpm dlx vercel
+pnpm dlx vercel --prod
+```
+
+`pnpm deploy` runs `vercel deploy` when the Vercel CLI is already available.
+
+### Self-hosting
+
+Build and run the standard Next.js server:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+pnpm start
+```
+
+The host must preserve Next.js ISR behavior and support the API routes under `/api`. Redis is strongly recommended for multiple instances if password protection or shared preview-image cache is enabled.
+
+## Routes and generated endpoints
+
+| Route                            | Purpose                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| `/`                              | Root Notion page.                                                              |
+| `/[pageId]`                      | Canonical Notion page routes and configured URL overrides.                     |
+| `/feed`                          | RSS feed. Password-protected entries expose only their description.            |
+| `/sitemap.xml`                   | Sitemap generated from the canonical page map.                                 |
+| `/robots.txt`                    | Allows crawlers only on the Vercel production deployment.                      |
+| `/api/revalidate`                | Token-protected on-demand ISR revalidation.                                    |
+| `/api/search-notion`             | Internal POST endpoint used by site search; protected-page blocks are removed. |
+| `/api/unlock-page`               | POST endpoint for password-protected article bodies.                           |
+| `/api/social-image?id=<page-id>` | Open Graph card renderer.                                                      |
+| `/api/notion-image?url=<url>`    | Browser-side proxy for compatible Notion image URLs.                           |
+
+## Development and verification
+
+```bash
+pnpm dev                 # local development
+pnpm build               # production build
+pnpm start               # serve the existing production build
+pnpm run test:prettier   # formatting check
+pnpm run test:lint       # ESLint
+pnpm run analyze         # bundle analysis
+```
+
+`pnpm build` fetches the configured Notion root page, so it needs valid configuration and network access. Use `pnpm run deps:link` only when developing against a local checkout of `react-notion-x`; [contributing.md](contributing.md) describes that workflow.
+
+## Repository layout
+
+```text
+components/   React presentation, header controls, password gate, filters
+lib/          Notion loading, URL mapping, cache, access checks, word count
+pages/        Next.js pages, RSS, sitemap/robots, and API routes
+public/       Logo, favicons, and bundled LXGW WenKai fonts
+styles/       Global, Notion, and Prism overrides
+site.config.ts Site identity and behavior
+```
+
+## Credits
+
+- [Next.js](https://nextjs.org/)
+- [react-notion-x](https://github.com/NotionX/react-notion-x)
+- [notion-client](https://github.com/NotionX/react-notion-x/tree/master/packages/notion-client)
+- [KaTeX](https://katex.org/)
+- [LXGW WenKai](https://github.com/lxgw/LxgwWenKai)
 
 ## License
 
-MIT © [Travis Fischer](https://transitivebullsh.it)
-
-Support my open source work by <a href="https://x.com/transitive_bs">following me on twitter <img src="https://storage.googleapis.com/saasify-assets/twitter-logo.svg" alt="twitter" height="24px" align="center"></a>
+[MIT](license)

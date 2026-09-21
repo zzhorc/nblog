@@ -7,6 +7,11 @@ import { environment, pageUrlAdditions, pageUrlOverrides, site } from './config'
 import { db } from './db'
 import { getSiteMap } from './get-site-map'
 import { getPage } from './notion'
+import {
+  createLockedRecordMap,
+  getPagePassword,
+  sanitizeRecordMap
+} from './password-protection'
 
 export async function resolveNotionPage(
   domain: string,
@@ -33,14 +38,12 @@ export async function resolveNotionPage(
     const cacheKey = `uri-to-page-id:${domain}:${environment}:${rawPageId}`
     // TODO: should we use a TTL for these mappings or make them permanent?
     // const cacheTTL = 8.64e7 // one day in milliseconds
-    const cacheTTL = undefined // disable cache TTL
+    const cacheTTL = 60_000 // 60 seconds, aligned with revalidate interval
 
     if (!pageId && useUriToPageIdCache) {
       try {
         // check if the database has a cached mapping of this URI to page ID
         pageId = await db.get(cacheKey)
-
-        // console.log(`redis get "${cacheKey}"`, pageId)
       } catch (err: any) {
         // ignore redis errors
         console.warn(`redis error get "${cacheKey}"`, err.message)
@@ -66,8 +69,6 @@ export async function resolveNotionPage(
           try {
             // update the database mapping of URI to pageId
             await db.set(cacheKey, pageId, cacheTTL)
-
-            // console.log(`redis set "${cacheKey}"`, pageId, { cacheTTL })
           } catch (err: any) {
             // ignore redis errors
             console.warn(`redis error set "${cacheKey}"`, err.message)
@@ -86,10 +87,18 @@ export async function resolveNotionPage(
   } else {
     pageId = site.rootNotionPageId
 
-    console.log(site)
     recordMap = await getPage(pageId)
   }
 
-  const props: PageProps = { site, recordMap, pageId }
+  const password = getPagePassword(recordMap, pageId)
+  const publicRecordMap = password
+    ? createLockedRecordMap(recordMap, pageId)
+    : sanitizeRecordMap(recordMap)
+  const props: PageProps = {
+    site,
+    recordMap: publicRecordMap,
+    pageId,
+    isPasswordProtected: password !== undefined
+  }
   return { ...props, ...(await acl.pageAcl(props)) }
 }

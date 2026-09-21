@@ -9,8 +9,8 @@ To develop the project locally, you'll need a recent version of Node.js and `pnp
 To get started, clone the repo and run `pnpm` from the root directory:
 
 ```bash
-git clone https://github.com/transitive-bullshit/nextjs-notion-starter-kit
-cd nextjs-notion-starter-kit
+git clone https://github.com/zzhorc/nblog
+cd nblog
 pnpm
 ```
 
@@ -34,19 +34,19 @@ Which just runs `next build` under the hood.
 
 ### Local-linked react-notion-x
 
-If you are making changes to `react-notion-x` and want to test them out with `nextjs-notion-starter-kit`, you'll first need to [set up and build `react-notion-x` locally](https://github.com/NotionX/react-notion-x/blob/master/contributing.md).
+If you are making changes to `react-notion-x` and want to test them out with `nblog`, you'll first need to [set up and build `react-notion-x` locally](https://github.com/NotionX/react-notion-x/blob/master/contributing.md).
 
-Once you have `react-notion-x` set up and built locally, you can link these local deps into `nextjs-notion-starter-kit`:
+Once you have `react-notion-x` set up and built locally, you can link these local deps into `nblog`:
 
 ```bash
 pnpm deps:link
 ```
 
-With this setup, in one tab, you can run `pnpm dev` to keep `react-notion-x` up-to-date, and in another tab, you can run `pnpm dev` to keep `nextjs-notion-starter-kit` up-to-date.
+With this setup, in one tab, you can run `pnpm dev` to keep `react-notion-x` up-to-date, and in another tab, you can run `pnpm dev` to keep `nblog` up-to-date.
 
 ### Gotchas
 
-Whenever you make a change to one of the `react-notion-x` packages, it will automatically be recompiled into its respective `build` folder, and the `pnpm dev` from `nextjs-notion-starter-kit` should hot-reload it in the browser.
+Whenever you make a change to one of the `react-notion-x` packages, it will automatically be recompiled into its respective `build` folder, and the `pnpm dev` from `nblog` should hot-reload it in the browser.
 
 Sometimes, this process gets a little out of whack, and if you're not sure what's going on, I usually just quit one or both of the `pnpm dev` commands and restart them.
 

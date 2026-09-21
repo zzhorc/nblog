@@ -15,6 +15,7 @@ export interface PageProps {
   site?: Site
   recordMap?: ExtendedRecordMap
   pageId?: string
+  isPasswordProtected?: boolean
   error?: PageError
 }
 

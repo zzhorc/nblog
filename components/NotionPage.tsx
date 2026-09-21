@@ -4,36 +4,34 @@ import Image from 'next/legacy/image'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { type PageBlock } from 'notion-types'
-import {
-  formatDate,
-  getBlockTitle,
-  getBlockValue,
-  getPageProperty
-} from 'notion-utils'
+import { formatDate, getBlockTitle, getPageProperty } from 'notion-utils'
 import * as React from 'react'
 import BodyClassName from 'react-body-classname'
-import {
-  type NotionComponents,
-  NotionRenderer,
-  useNotionContext
-} from 'react-notion-x'
+import { type NotionComponents, useNotionContext } from 'react-notion-x'
 import { EmbeddedTweet, TweetNotFound, TweetSkeleton } from 'react-tweet'
 import { useSearchParam } from 'react-use'
 
 import type * as types from '@/lib/types'
+import {
+  countMatchingArticles,
+  filterRecordMapByOptions,
+  getCollectionFilterOptions
+} from '@/lib/collection-filter'
 import * as config from '@/lib/config'
+import { countArticleWords } from '@/lib/count-article-words'
 import { mapImageUrl } from '@/lib/map-image-url'
 import { getCanonicalPageUrl, mapPageUrl } from '@/lib/map-page-url'
 import { searchNotion } from '@/lib/search-notion'
 import { useDarkMode } from '@/lib/use-dark-mode'
 
+import { CollectionFilterProvider } from './CollectionFilter'
 import { Footer } from './Footer'
-import { GitHubShareButton } from './GitHubShareButton'
 import { Loading } from './Loading'
 import { NotionPageHeader } from './NotionPageHeader'
 import { Page404 } from './Page404'
 import { PageAside } from './PageAside'
 import { PageHead } from './PageHead'
+import { PasswordGate } from './PasswordGate'
 import styles from './styles.module.css'
 
 // -----------------------------------------------------------------------------
@@ -136,6 +134,13 @@ const Modal = dynamic(
   }
 )
 
+const NotionRenderer = dynamic(
+  () => import('react-notion-x').then((m) => m.NotionRenderer),
+  {
+    ssr: false
+  }
+)
+
 function Tweet({ id }: { id: string }) {
   const { recordMap } = useNotionContext()
   const tweet = (recordMap as types.ExtendedTweetRecordMap)?.tweets?.[id]
@@ -192,10 +197,25 @@ export function NotionPage({
   site,
   recordMap,
   error,
-  pageId
+  pageId,
+  isPasswordProtected
 }: types.PageProps) {
   const router = useRouter()
   const lite = useSearchParam('lite')
+  const [unlockedPage, setUnlockedPage] = React.useState<{
+    pageId: string
+    recordMap: types.ExtendedRecordMap
+  }>()
+
+  const unlockedRecordMap =
+    unlockedPage && unlockedPage.pageId === pageId
+      ? unlockedPage.recordMap
+      : undefined
+  const isLocked = !!isPasswordProtected && !unlockedRecordMap
+  const activeRecordMap = unlockedRecordMap || recordMap
+  const [selectedFilterKeys, setSelectedFilterKeys] = React.useState<
+    Set<string>
+  >(() => new Set())
 
   const components = React.useMemo<Partial<NotionComponents>>(
     () => ({
@@ -218,79 +238,169 @@ export function NotionPage({
   // lite mode is for oembed
   const isLiteMode = lite === 'true'
 
+  const [hasMounted, setHasMounted] = React.useState(false)
   const { isDarkMode } = useDarkMode()
+
+  React.useEffect(() => {
+    setHasMounted(true)
+  }, [])
 
   const siteMapPageUrl = React.useMemo(() => {
     const params: any = {}
     if (lite) params.lite = lite
 
     const searchParams = new URLSearchParams(params)
-    return site ? mapPageUrl(site, recordMap!, searchParams) : undefined
-  }, [site, recordMap, lite])
+    return site ? mapPageUrl(site, activeRecordMap!, searchParams) : undefined
+  }, [site, activeRecordMap, lite])
 
-  const keys = Object.keys(recordMap?.block || {})
-  const block = getBlockValue(recordMap?.block?.[keys[0]!])
+  const keys = Object.keys(activeRecordMap?.block || {})
+  const block = activeRecordMap?.block?.[keys[0]!]?.value
 
   // const isRootPage =
   //   parsePageId(block?.id) === parsePageId(site?.rootNotionPageId)
   const isBlogPost =
     block?.type === 'page' && block?.parent_table === 'collection'
 
-  const showTableOfContents = !!isBlogPost
+  const articleWordCount = React.useMemo(
+    () =>
+      isBlogPost && !isLocked && block && activeRecordMap
+        ? countArticleWords(block, activeRecordMap)
+        : 0,
+    [activeRecordMap, block, isBlogPost, isLocked]
+  )
+
+  const rendererComponents = React.useMemo<Partial<NotionComponents>>(() => {
+    function CollectionWithWordCount(props: any) {
+      const isArticleProperties = props.block?.id === block?.id
+
+      return (
+        <>
+          <Collection {...props} />
+          {isArticleProperties && isBlogPost && !isLocked && (
+            <div
+              className={styles.articleWordCount}
+              aria-label={`全文字数 ${articleWordCount} 字`}
+            >
+              全文 {articleWordCount.toLocaleString('zh-CN')} 字
+            </div>
+          )}
+        </>
+      )
+    }
+
+    return {
+      ...components,
+      Collection: CollectionWithWordCount
+    }
+  }, [articleWordCount, block?.id, components, isBlogPost, isLocked])
+
+  const showTableOfContents = !!isBlogPost && !isLocked
   const minTableOfContentsItems = 3
 
   const pageAside = React.useMemo(
-    () => (
-      <PageAside
-        block={block!}
-        recordMap={recordMap!}
-        isBlogPost={isBlogPost}
-      />
-    ),
-    [block, recordMap, isBlogPost]
+    () =>
+      !isLocked && activeRecordMap ? (
+        <PageAside
+          block={block!}
+          recordMap={activeRecordMap}
+          isBlogPost={isBlogPost}
+        />
+      ) : undefined,
+    [block, activeRecordMap, isBlogPost, isLocked]
   )
 
-  const footer = React.useMemo(() => <Footer />, [])
+  const footer =
+    isLocked && pageId ? (
+      <PasswordGate
+        pageId={pageId}
+        onUnlock={(unlockedMap) =>
+          setUnlockedPage({ pageId, recordMap: unlockedMap })
+        }
+      />
+    ) : (
+      <Footer />
+    )
+
+  const collectionFilterOptions = React.useMemo(
+    () =>
+      activeRecordMap && pageId === site?.rootNotionPageId
+        ? getCollectionFilterOptions(activeRecordMap)
+        : [],
+    [activeRecordMap, pageId, site?.rootNotionPageId]
+  )
+  const filteredRecordMap = React.useMemo(
+    () =>
+      activeRecordMap
+        ? filterRecordMapByOptions(
+            activeRecordMap,
+            collectionFilterOptions,
+            selectedFilterKeys
+          )
+        : undefined,
+    [activeRecordMap, collectionFilterOptions, selectedFilterKeys]
+  )
+  const matchingArticleCount = React.useMemo(
+    () =>
+      activeRecordMap
+        ? countMatchingArticles(
+            activeRecordMap,
+            collectionFilterOptions,
+            selectedFilterKeys
+          )
+        : 0,
+    [activeRecordMap, collectionFilterOptions, selectedFilterKeys]
+  )
+  const toggleFilterOption = React.useCallback((key: string) => {
+    setSelectedFilterKeys((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+  const clearFilterOptions = React.useCallback(() => {
+    setSelectedFilterKeys(new Set())
+  }, [])
+  const collectionFilterValue = React.useMemo(
+    () => ({
+      options: collectionFilterOptions,
+      selectedKeys: selectedFilterKeys,
+      matchingArticleCount,
+      toggleOption: toggleFilterOption,
+      clearOptions: clearFilterOptions
+    }),
+    [
+      clearFilterOptions,
+      collectionFilterOptions,
+      matchingArticleCount,
+      selectedFilterKeys,
+      toggleFilterOption
+    ]
+  )
 
   if (router.isFallback) {
     return <Loading />
   }
 
-  if (error || !site || !block || !recordMap) {
+  if (error || !site || !block || !activeRecordMap) {
     return <Page404 site={site} pageId={pageId} error={error} />
   }
 
-  const title = getBlockTitle(block, recordMap) || site.name
-
-  console.log('notion page', {
-    isDev: config.isDev,
-    title,
-    pageId,
-    rootNotionPageId: site.rootNotionPageId,
-    recordMap
-  })
-
-  if (!config.isServer) {
-    // add important objects to the window global for easy debugging
-    const g = window as any
-    g.pageId = pageId
-    g.recordMap = recordMap
-    g.block = block
-  }
+  const title = getBlockTitle(block, activeRecordMap) || site.name
 
   const canonicalPageUrl = config.isDev
     ? undefined
-    : getCanonicalPageUrl(site, recordMap)(pageId)
+    : getCanonicalPageUrl(site, activeRecordMap)(pageId)
 
   const socialImage = mapImageUrl(
-    getPageProperty<string>('Social Image', block, recordMap) ||
+    getPageProperty<string>('Social Image', block, activeRecordMap) ||
       (block as PageBlock).format?.page_cover ||
       config.defaultPageCover,
     block
   )
 
   const socialDescription =
-    getPageProperty<string>('Description', block, recordMap) ||
+    getPageProperty<string>('Description', block, activeRecordMap) ||
     config.description
 
   return (
@@ -306,34 +416,34 @@ export function NotionPage({
       />
 
       {isLiteMode && <BodyClassName className='notion-lite' />}
-      {isDarkMode && <BodyClassName className='dark-mode' />}
+      {hasMounted && isDarkMode && <BodyClassName className='dark-mode' />}
 
-      <NotionRenderer
-        bodyClassName={cs(
-          styles.notion,
-          pageId === site.rootNotionPageId && 'index-page'
-        )}
-        darkMode={isDarkMode}
-        components={components}
-        recordMap={recordMap}
-        rootPageId={site.rootNotionPageId}
-        rootDomain={site.domain}
-        fullPage={!isLiteMode}
-        previewImages={!!recordMap.preview_images}
-        showCollectionViewDropdown={false}
-        showTableOfContents={showTableOfContents}
-        minTableOfContentsItems={minTableOfContentsItems}
-        defaultPageIcon={config.defaultPageIcon}
-        defaultPageCover={config.defaultPageCover}
-        defaultPageCoverPosition={config.defaultPageCoverPosition}
-        mapPageUrl={siteMapPageUrl}
-        mapImageUrl={mapImageUrl}
-        searchNotion={config.isSearchEnabled ? searchNotion : undefined}
-        pageAside={pageAside}
-        footer={footer}
-      />
-
-      <GitHubShareButton />
+      <CollectionFilterProvider value={collectionFilterValue}>
+        <NotionRenderer
+          bodyClassName={cs(
+            styles.notion,
+            pageId === site.rootNotionPageId && 'index-page'
+          )}
+          darkMode={hasMounted && isDarkMode}
+          components={rendererComponents}
+          recordMap={filteredRecordMap!}
+          rootPageId={site.rootNotionPageId}
+          rootDomain={site.domain}
+          fullPage={!isLiteMode}
+          previewImages={!!activeRecordMap.preview_images}
+          showCollectionViewDropdown={false}
+          showTableOfContents={showTableOfContents}
+          minTableOfContentsItems={minTableOfContentsItems}
+          defaultPageIcon={config.defaultPageIcon}
+          defaultPageCover={config.defaultPageCover}
+          defaultPageCoverPosition={config.defaultPageCoverPosition}
+          mapPageUrl={siteMapPageUrl}
+          mapImageUrl={mapImageUrl}
+          searchNotion={config.isSearchEnabled ? searchNotion : undefined}
+          pageAside={pageAside}
+          footer={footer}
+        />
+      </CollectionFilterProvider>
     </>
   )
 }

@@ -1,13 +1,15 @@
 import type * as types from 'notion-types'
 import cs from 'classnames'
 import * as React from 'react'
-import { Breadcrumbs, Header, Search, useNotionContext } from 'react-notion-x'
+import { Header, Search, useNotionContext } from 'react-notion-x'
 
 import { isSearchEnabled, navigationLinks, navigationStyle } from '@/lib/config'
 import { MoonIcon } from '@/lib/icons/moon'
 import { SunIcon } from '@/lib/icons/sun'
 import { useDarkMode } from '@/lib/use-dark-mode'
+import { useFontScale } from '@/lib/use-font-scale'
 
+import { CollectionFilterButton } from './CollectionFilter'
 import styles from './styles.module.css'
 
 function ToggleThemeButton() {
@@ -32,6 +34,43 @@ function ToggleThemeButton() {
   )
 }
 
+function FontScaleControls() {
+  const {
+    canDecreaseFontScale,
+    canIncreaseFontScale,
+    decreaseFontScale,
+    increaseFontScale
+  } = useFontScale()
+
+  return (
+    <div className={styles.fontScaleControls} aria-label='调整字体大小'>
+      <button
+        type='button'
+        className={cs('breadcrumb', 'button', styles.fontScaleButton)}
+        onClick={decreaseFontScale}
+        disabled={!canDecreaseFontScale}
+        title='Decrease font size'
+        aria-label='Decrease font size'
+      >
+        -
+      </button>
+      <span className={styles.fontScaleLabel} aria-hidden='true'>
+        字
+      </span>
+      <button
+        type='button'
+        className={cs('breadcrumb', 'button', styles.fontScaleButton)}
+        onClick={increaseFontScale}
+        disabled={!canIncreaseFontScale}
+        title='Increase font size'
+        aria-label='Increase font size'
+      >
+        +
+      </button>
+    </div>
+  )
+}
+
 export function NotionPageHeader({
   block
 }: {
@@ -46,7 +85,27 @@ export function NotionPageHeader({
   return (
     <header className='notion-header'>
       <div className='notion-nav-header'>
-        <Breadcrumbs block={block} rootOnly={true} />
+        <div
+          className='breadcrumb button'
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <a
+            href='/'
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              textDecoration: 'none',
+              color: 'inherit'
+            }}
+          >
+            <img
+              src='/logo.png'
+              alt='Logo'
+              style={{ width: '24px', height: '24px', borderRadius: '50%' }}
+            />
+          </a>
+        </div>
 
         <div className='notion-nav-header-rhs breadcrumbs'>
           {navigationLinks
@@ -80,6 +139,8 @@ export function NotionPageHeader({
             .filter(Boolean)}
 
           <ToggleThemeButton />
+          <FontScaleControls />
+          <CollectionFilterButton />
 
           {isSearchEnabled && <Search block={block} title={null} />}
         </div>

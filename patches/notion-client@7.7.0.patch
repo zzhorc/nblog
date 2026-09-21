@@ -1,0 +1,13 @@
+diff --git a/build/index.js b/build/index.js
+index b58f5ef7b8e09856a51511b0743ed190d5a3c5a6..9c64ea89be169e5056c00572ae6a10df62ab5630 100644
+--- a/build/index.js
++++ b/build/index.js
+@@ -18,7 +18,7 @@ var NotionAPI = class {
+     // personal public notion site. This used to be 'https://www.notion.so/api/v3',
+     // but the queryCollection endpoint on this domain started returning `530`
+     // HTTP errors for some reason.
+-    apiBaseUrl = "https://transitive-bs.notion.site/api/v3",
++    apiBaseUrl = "https://www.notion.so/api/v3",
+     authToken,
+     activeUser,
+     userTimeZone = "America/New_York",
