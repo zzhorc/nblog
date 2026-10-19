@@ -9,6 +9,7 @@ import { isSearchEnabled, navigationLinks, navigationStyle } from '@/lib/config'
 import { useDarkMode } from '@/lib/use-dark-mode'
 import { useFontScale } from '@/lib/use-font-scale'
 
+import { ArticleSearch } from './ArticleSearch'
 import { CollectionFilterButton } from './CollectionFilter'
 import styles from './styles.module.css'
 
@@ -72,13 +73,17 @@ function FontScaleControls() {
 }
 
 export function NotionPageHeader({
-  block
+  block,
+  articleSearch = false,
+  searchDisabled = false
 }: {
   block: types.CollectionViewPageBlock | types.PageBlock
+  articleSearch?: boolean
+  searchDisabled?: boolean
 }) {
   const { components, mapPageUrl } = useNotionContext()
 
-  if (navigationStyle === 'default') {
+  if (navigationStyle === 'default' && !articleSearch) {
     return <Header block={block} />
   }
 
@@ -142,7 +147,12 @@ export function NotionPageHeader({
           <FontScaleControls />
           <CollectionFilterButton />
 
-          {isSearchEnabled && <Search block={block} title={null} />}
+          {!searchDisabled &&
+            (articleSearch ? (
+              <ArticleSearch key={block.id} />
+            ) : (
+              isSearchEnabled && <Search block={block} title={null} />
+            ))}
         </div>
       </div>
     </header>

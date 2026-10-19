@@ -291,6 +291,13 @@ export function NotionPage({
 
     return {
       ...components,
+      Header: (props: React.ComponentProps<typeof NotionPageHeader>) => (
+        <NotionPageHeader
+          {...props}
+          articleSearch={!!isBlogPost}
+          searchDisabled={isLocked}
+        />
+      ),
       Collection: CollectionWithWordCount
     }
   }, [articleWordCount, block?.id, components, isBlogPost, isLocked])
