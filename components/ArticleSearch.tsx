@@ -86,6 +86,12 @@ export function ArticleSearch() {
 
   return (
     <>
+      {/* The build's CSS parser does not support Custom Highlight selectors.
+          Let the browser parse this progressive enhancement directly. */}
+      <style>{`::highlight(article-search-match) {
+        background: #ffe08a;
+        color: #342400;
+      }`}</style>
       <button
         type='button'
         className={`breadcrumb button notion-search-button ${styles.trigger}`}

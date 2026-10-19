@@ -107,8 +107,7 @@
   font-size: 12px;
 }
 
-.results mark,
-.target::highlight(article-search-match) {
+.results mark {
   background: #ffe08a;
   color: #342400;
 }
