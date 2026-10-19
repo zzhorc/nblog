@@ -1,0 +1,110 @@
+.root {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(24px, env(safe-area-inset-bottom));
+  z-index: 105;
+  color: #37352f;
+  font-size: 14px;
+}
+
+:global(.dark-mode) .root {
+  color: #ebebeb;
+}
+
+.trigger,
+.panel {
+  background: #fff;
+  border: 1px solid rgb(55 53 47 / 15%);
+  box-shadow: 0 4px 24px rgb(0 0 0 / 12%);
+}
+
+:global(.dark-mode) .trigger,
+:global(.dark-mode) .panel {
+  background: #252525;
+  border-color: rgb(255 255 255 / 18%);
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-left: auto;
+  padding: 0;
+  border-radius: 50%;
+  color: inherit;
+  cursor: pointer;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.root[data-docked='true'] {
+  right: 0;
+}
+
+.root[data-docked='true'] .trigger {
+  width: 28px;
+  border-radius: 12px 0 0 12px;
+}
+
+.panel {
+  width: min(320px, calc(100vw - 32px - env(safe-area-inset-right)));
+  max-height: min(60vh, calc(100dvh - 140px));
+  margin-bottom: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 12px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 4px 16px;
+  border-bottom: 1px solid rgb(128 128 128 / 20%);
+  font-weight: 500;
+}
+
+.header button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.list {
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+.list a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: inherit;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.list a:hover {
+  background: rgb(128 128 128 / 12%);
+}
+
+.root :is(button, a):focus-visible {
+  outline: 2px solid #eb5757;
+  outline-offset: -2px;
+}
+
+@media (min-width: 1300px) and (min-height: 300px) {
+  .root:not([data-desktop='true']) {
+    display: none;
+  }
+}

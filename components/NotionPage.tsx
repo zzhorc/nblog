@@ -25,6 +25,7 @@ import { searchNotion } from '@/lib/search-notion'
 import { useDarkMode } from '@/lib/use-dark-mode'
 
 import { CollectionFilterProvider } from './CollectionFilter'
+import { FloatingTableOfContents } from './FloatingTableOfContents'
 import { Footer } from './Footer'
 import { Loading } from './Loading'
 import { NotionPageHeader } from './NotionPageHeader'
@@ -444,6 +445,14 @@ export function NotionPage({
           footer={footer}
         />
       </CollectionFilterProvider>
+      {showTableOfContents && (
+        <FloatingTableOfContents
+          key={pageId}
+          block={block as PageBlock}
+          recordMap={filteredRecordMap!}
+          minSidebarItems={minTableOfContentsItems}
+        />
+      )}
     </>
   )
 }
