@@ -1,11 +1,12 @@
-import { FaEnvelopeOpenText } from '@react-icons/all-files/fa/FaEnvelopeOpenText'
-import { FaGithub } from '@react-icons/all-files/fa/FaGithub'
 import { FaLinkedin } from '@react-icons/all-files/fa/FaLinkedin'
 import { FaMastodon } from '@react-icons/all-files/fa/FaMastodon'
-import { FaRss } from '@react-icons/all-files/fa/FaRss'
 import { FaTwitter } from '@react-icons/all-files/fa/FaTwitter'
 import { FaYoutube } from '@react-icons/all-files/fa/FaYoutube'
 import { FaZhihu } from '@react-icons/all-files/fa/FaZhihu'
+import { FiCamera } from '@react-icons/all-files/fi/FiCamera'
+import { FiGithub } from '@react-icons/all-files/fi/FiGithub'
+import { FiMail } from '@react-icons/all-files/fi/FiMail'
+import { FiRss } from '@react-icons/all-files/fi/FiRss'
 import { IoMoonSharp } from '@react-icons/all-files/io5/IoMoonSharp'
 import { IoSunnyOutline } from '@react-icons/all-files/io5/IoSunnyOutline'
 import * as React from 'react'
@@ -95,10 +96,11 @@ export function FooterImpl() {
             className={styles.github}
             href={`https://github.com/${config.github}`}
             title={`GitHub @${config.github}`}
+            aria-label={`GitHub @${config.github}`}
             target='_blank'
             rel='noopener noreferrer'
           >
-            <FaGithub />
+            <FiGithub aria-hidden='true' />
           </a>
         )}
 
@@ -119,10 +121,11 @@ export function FooterImpl() {
             className={styles.newsletter}
             href={`${config.newsletter}`}
             title={`Newsletter ${config.author}`}
+            aria-label={`Email ${config.author}`}
             target='_blank'
             rel='noopener noreferrer'
           >
-            <FaEnvelopeOpenText />
+            <FiMail aria-hidden='true' />
           </a>
         )}
 
@@ -138,14 +141,27 @@ export function FooterImpl() {
           </a>
         )}
 
+        {config.photography && (
+          <a
+            href={config.photography}
+            title='摄影作品 · Photography'
+            aria-label='摄影作品 · Photography'
+            target='_blank'
+            rel='noopener noreferrer'
+          >
+            <FiCamera aria-hidden='true' />
+          </a>
+        )}
+
         <a
           className={styles.rss}
           href='/feed'
           title='RSS Feed'
+          aria-label='RSS Feed'
           target='_blank'
           rel='noopener noreferrer'
         >
-          <FaRss />
+          <FiRss aria-hidden='true' />
         </a>
       </div>
     </footer>

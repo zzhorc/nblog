@@ -77,6 +77,7 @@ export const github: string | undefined = getSiteConfig('github')
 export const youtube: string | undefined = getSiteConfig('youtube')
 export const linkedin: string | undefined = getSiteConfig('linkedin')
 export const newsletter: string | undefined = getSiteConfig('newsletter')
+export const photography: string | undefined = getSiteConfig('photography')
 export const zhihu: string | undefined = getSiteConfig('zhihu')
 
 export const getMastodonHandle = (): string | undefined => {
