@@ -54,7 +54,7 @@ Next.js Pages Router -> react-notion-x -> 浏览器
 
 ## 前置条件
 
-- Node.js 18 或更高版本
+- Node.js 22.23.4+（22.x）或 24.22.1+（24.x）；本地版本固定在 `.nvmrc`
 - pnpm 10（版本固定在 `package.json`）
 - 一个已发布到 Web 的 Notion 根页面
 - 能运行 Next.js Pages Router API 路由的部署环境；本仓库优先支持 Vercel

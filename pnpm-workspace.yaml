@@ -1,3 +1,12 @@
+overrides:
+  'lqip-modern>sharp': ^0.35.5
+
+# These existing UI dependencies have not updated their React peer ranges.
+peerDependencyRules:
+  allowedVersions:
+    'use-persisted-state>react': ^19.2.9
+    'react-side-effect>react': ^19.2.9
+
 patchedDependencies:
   notion-utils: patches/notion-utils.patch
   notion-client@7.7.0: patches/notion-client@7.7.0.patch

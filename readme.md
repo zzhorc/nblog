@@ -54,7 +54,7 @@ Next.js Pages Router -> react-notion-x -> browser
 
 ## Requirements
 
-- Node.js 18 or newer
+- Node.js 22.23.4+ (22.x) or 24.22.1+ (24.x); `.nvmrc` pins the local version
 - pnpm 10 (the version is pinned in `package.json`)
 - A Notion root page that is published to the web
 - A deployment target that can run Next.js Pages Router API routes; Vercel is the supported path in this repository
