@@ -3,6 +3,7 @@ import { parsePageId } from 'notion-utils'
 
 import type { PageProps } from './types'
 import * as acl from './acl'
+import { filterHiddenArticles } from './collection-filter'
 import { environment, pageUrlAdditions, pageUrlOverrides, site } from './config'
 import { db } from './db'
 import { getSiteMap } from './get-site-map'
@@ -88,6 +89,10 @@ export async function resolveNotionPage(
     pageId = site.rootNotionPageId
 
     recordMap = await getPage(pageId)
+  }
+
+  if (pageId === site.rootNotionPageId) {
+    recordMap = filterHiddenArticles(recordMap)
   }
 
   const password = getPagePassword(recordMap, pageId)

@@ -132,6 +132,8 @@ Publish the root page to the web first. Create article databases inside that pub
 
 The article word count is calculated in the browser from the same `ExtendedRecordMap` that renders the article. It does not add a Notion property or write anything back to Notion.
 
+Add a **Checkbox** property named `Hidden` or `隐藏` to the article database to hide checked articles from homepage collection views and category/tag counts. Uncheck it to restore visibility; omitting the property keeps existing behavior. Article URLs (including slugs) remain accessible. Search, RSS, and sitemap behavior is unchanged. Changes appear after homepage revalidation; use the on-demand revalidation endpoint below for an immediate update.
+
 ### Password-protected articles
 
 Password protection is meant to withhold body content from normal page, RSS, and search responses. It is not user authentication or encryption at rest.

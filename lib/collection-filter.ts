@@ -3,6 +3,7 @@ import type {
   ExtendedRecordMap,
   SelectOption
 } from 'notion-types'
+import { getPageProperty } from 'notion-utils'
 
 export type CollectionFilterKind = 'category' | 'tag'
 
@@ -23,6 +24,70 @@ const categoryPropertyNames = new Set([
   '分类'
 ])
 const tagPropertyNames = new Set(['tag', 'tags', '标签'])
+
+/** Hide checked articles from homepage views without changing URL resolution. */
+export function filterHiddenArticles(
+  recordMap: ExtendedRecordMap
+): ExtendedRecordMap {
+  const hiddenIds = new Set<string>()
+
+  for (const [blockId, record] of Object.entries(recordMap.block || {})) {
+    const block = record?.value
+    if (block?.type !== 'page' || block.parent_table !== 'collection') continue
+
+    if (
+      ['Hidden', '隐藏'].some(
+        (name) => getPageProperty<boolean>(name, block, recordMap) === true
+      )
+    ) {
+      hiddenIds.add(blockId)
+    }
+  }
+
+  if (!hiddenIds.size) return recordMap
+
+  return {
+    ...recordMap,
+    collection_query: Object.fromEntries(
+      Object.entries(recordMap.collection_query || {}).map(
+        ([collectionId, views]) => [
+          collectionId,
+          Object.fromEntries(
+            Object.entries(views).map(([viewId, query]) => [
+              viewId,
+              removeHiddenQueryIds(query, hiddenIds) as CollectionQueryResult
+            ])
+          )
+        ]
+      )
+    )
+  }
+}
+
+// Notion stores IDs in flat views, grouped results and board columns.
+function removeHiddenQueryIds(value: unknown, hiddenIds: Set<string>): unknown {
+  if (Array.isArray(value)) {
+    return value.map((child) => removeHiddenQueryIds(child, hiddenIds))
+  }
+  if (!value || typeof value !== 'object') return value
+
+  const result = Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key,
+      removeHiddenQueryIds(child, hiddenIds)
+    ])
+  )
+
+  if (Array.isArray(result.blockIds)) {
+    const blockIds = result.blockIds.filter(
+      (id) => typeof id !== 'string' || !hiddenIds.has(id)
+    )
+    result.blockIds = blockIds
+    if ('total' in result) result.total = blockIds.length
+  }
+
+  return result
+}
 
 export function getCollectionFilterOptions(
   recordMap: ExtendedRecordMap
