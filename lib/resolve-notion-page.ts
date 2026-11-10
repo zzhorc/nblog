@@ -6,8 +6,9 @@ import * as acl from './acl'
 import { filterHiddenArticles } from './collection-filter'
 import { environment, pageUrlAdditions, pageUrlOverrides, site } from './config'
 import { db } from './db'
+import { getCanonicalPageId } from './get-canonical-page-id'
 import { getSiteMap } from './get-site-map'
-import { getPage } from './notion'
+import { getPage, getPageMetadata } from './notion'
 import {
   createLockedRecordMap,
   getPagePassword,
@@ -52,19 +53,25 @@ export async function resolveNotionPage(
     }
 
     if (pageId) {
-      recordMap = await getPage(pageId)
+      recordMap = await getDisplayRecordMap(pageId)
     } else {
       // handle mapping of user-friendly canonical page paths to Notion page IDs
       // e.g., /developer-x-entrepreneur versus /71201624b204481f862630ea25ce62fe
       const siteMap = await getSiteMap()
       pageId = siteMap?.canonicalPageMap[rawPageId]
+      // Development URLs can include IDs; keep existing bare slugs reachable.
+      pageId ||= Object.values(siteMap.canonicalPageMap).find(
+        (id) =>
+          getCanonicalPageId(id, siteMap.pageMap[id]!, { uuid: false }) ===
+          rawPageId
+      )
 
       if (pageId) {
         // TODO: we're not re-using the page recordMap from siteMaps because it is
         // cached aggressively
         // recordMap = siteMap.pageMap[pageId]
 
-        recordMap = await getPage(pageId)
+        recordMap = await getDisplayRecordMap(pageId)
 
         if (useUriToPageIdCache) {
           try {
@@ -88,7 +95,7 @@ export async function resolveNotionPage(
   } else {
     pageId = site.rootNotionPageId
 
-    recordMap = await getPage(pageId)
+    recordMap = await getDisplayRecordMap(pageId)
   }
 
   if (pageId === site.rootNotionPageId) {
@@ -106,4 +113,9 @@ export async function resolveNotionPage(
     isPasswordProtected: password !== undefined
   }
   return { ...props, ...(await acl.pageAcl(props)) }
+}
+
+async function getDisplayRecordMap(pageId: string) {
+  const metadata = await getPageMetadata(pageId)
+  return getPagePassword(metadata, pageId) ? metadata : getPage(pageId)
 }

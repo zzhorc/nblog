@@ -28,6 +28,19 @@ export const mapImageUrl = (url: string | undefined, block: Block) => {
     return '/logo.png'
   }
 
+  // Official API file URLs are already signed; the public Notion image
+  // proxy cannot authenticate a private source page.
+  try {
+    const source = new URL(url)
+    if (
+      source.protocol === 'https:' &&
+      source.searchParams.has('X-Amz-Signature')
+    )
+      return url
+  } catch {
+    // Relative assets still use the existing mapper.
+  }
+
   const mappedUrl = defaultMapImageUrl(url, block)
 
   // Browser requests to notion.so/image can hang in some networks. Keep

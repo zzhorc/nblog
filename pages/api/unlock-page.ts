@@ -5,7 +5,7 @@ import { getPageProperty, parsePageId } from 'notion-utils'
 
 import * as acl from '@/lib/acl'
 import { site } from '@/lib/config'
-import { getPage } from '@/lib/notion'
+import { getPage, getPageMetadata } from '@/lib/notion'
 import {
   getPagePassword,
   getRootPageBlock,
@@ -60,13 +60,19 @@ export default async function unlockPage(
   }
 
   try {
-    const recordMap = await getPage(pageId)
-    const aclError = await acl.pageAcl({ site, recordMap, pageId })
-    const block = getRootPageBlock(recordMap, pageId)
+    const startedAt = performance.now()
+    const metadata = await getPageMetadata(pageId, { refresh: true })
+    const metadataReadyAt = performance.now()
+    res.setHeader(
+      'Server-Timing',
+      `metadata;dur=${(metadataReadyAt - startedAt).toFixed(1)}`
+    )
+    const aclError = await acl.pageAcl({ site, recordMap: metadata, pageId })
+    const block = getRootPageBlock(metadata, pageId)
     const isPublic =
       block &&
-      (getPageProperty<boolean | null>('Public', block, recordMap) ?? true)
-    const expectedPassword = getPagePassword(recordMap, pageId)
+      (getPageProperty<boolean | null>('Public', block, metadata) ?? true)
+    const expectedPassword = getPagePassword(metadata, pageId)
 
     if (aclError?.error || !block || !isPublic || !expectedPassword) {
       return res.status(404).json({ message: '文章不存在或无需解锁' })
@@ -90,10 +96,21 @@ export default async function unlockPage(
       })
     }
 
+    const recordMap = await getPage(pageId, { metadata })
+    const contentReadyAt = performance.now()
     await clearPasswordFailures(req, pageId)
-    return res.status(200).json({
-      recordMap: sanitizeRecordMap(recordMap, { unlockedPageId: pageId })
+    const safeRecordMap = sanitizeRecordMap(recordMap, {
+      unlockedPageId: pageId
     })
+    res.setHeader(
+      'Server-Timing',
+      [
+        `metadata;dur=${(metadataReadyAt - startedAt).toFixed(1)}`,
+        `content;dur=${(contentReadyAt - metadataReadyAt).toFixed(1)}`,
+        `sanitize;dur=${(performance.now() - contentReadyAt).toFixed(1)}`
+      ].join(', ')
+    )
+    return res.status(200).json({ recordMap: safeRecordMap })
   } catch (err) {
     console.error('unlock page error', pageId, err)
     return res.status(500).json({ message: '暂时无法验证，请稍后再试' })

@@ -13,7 +13,7 @@ import {
 import * as libConfig from '@/lib/config'
 import interSemiBoldFont from '@/lib/fonts/inter-semibold'
 import { mapImageUrl } from '@/lib/map-image-url'
-import { notion } from '@/lib/notion-api'
+import { getPageMetadata } from '@/lib/notion'
 import { type NotionPageInfo, type PageError } from '@/lib/types'
 
 // Use the default Node.js runtime: the image renderer exceeds Edge bundle limits.
@@ -183,7 +183,7 @@ export async function getNotionPageInfo({
   | { type: 'success'; data: NotionPageInfo }
   | { type: 'error'; error: PageError }
 > {
-  const recordMap = await notion.getPage(pageId)
+  const recordMap = await getPageMetadata(pageId)
 
   const keys = Object.keys(recordMap?.block || {})
   const block = recordMap?.block?.[keys[0]!]?.value

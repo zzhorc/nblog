@@ -1,21 +1,17 @@
 import ExpiryMap from 'expiry-map'
-import { getAllPagesInSpace, getPageProperty } from 'notion-utils'
+import { getPageProperty } from 'notion-utils'
 import pMemoize from 'p-memoize'
 
 import type * as types from './types'
 import * as config from './config'
 import { includeNotionIdInUrls } from './config'
 import { getCanonicalPageId } from './get-canonical-page-id'
-import { fetchCollectionData, unwrapRecordMap } from './notion'
-import { notion } from './notion-api'
+import { getSitePageMaps } from './notion'
 
 const uuid = !!includeNotionIdInUrls
 
 export async function getSiteMap(): Promise<types.SiteMap> {
-  const partialSiteMap = await getAllPages(
-    config.rootNotionPageId,
-    config.rootNotionSpaceId ?? undefined
-  )
+  const partialSiteMap = await getAllPages()
 
   return {
     site: config.site,
@@ -28,34 +24,8 @@ const getAllPages = pMemoize(getAllPagesImpl, {
   cacheKey: (...args) => JSON.stringify(args)
 })
 
-const getPage = async (pageId: string) => {
-  const recordMap = await notion.getPage(pageId, {
-    ofetchOptions: {
-      timeout: 30_000
-    },
-    signFileUrls: false
-  })
-
-  return fetchCollectionData(unwrapRecordMap(recordMap), { limit: 999 })
-}
-
-async function getAllPagesImpl(
-  rootNotionPageId: string,
-  rootNotionSpaceId?: string,
-  {
-    maxDepth = 1
-  }: {
-    maxDepth?: number
-  } = {}
-): Promise<Partial<types.SiteMap>> {
-  const pageMap = await getAllPagesInSpace(
-    rootNotionPageId,
-    rootNotionSpaceId,
-    getPage,
-    {
-      maxDepth
-    }
-  )
+async function getAllPagesImpl(): Promise<Partial<types.SiteMap>> {
+  const pageMap = await getSitePageMaps()
 
   const canonicalPageMap = Object.keys(pageMap).reduce(
     (map: Record<string, string>, pageId: string) => {

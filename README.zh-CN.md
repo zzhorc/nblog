@@ -38,10 +38,10 @@
 ## 技术结构
 
 ```text
-公开的 Notion 根页面 + 数据库
+私有 Notion 根页面 + 数据库（已连接集成）
               |
               v
-notion-client -> 规范化 ExtendedRecordMap -> 短期服务端缓存
+Notion 官方 API -> ExtendedRecordMap 适配 -> 短期服务端缓存
               |                                |
               |                                +-> sitemap / RSS / 搜索白名单
               v
@@ -50,16 +50,16 @@ Next.js Pages Router -> react-notion-x -> 浏览器
               +-> API：刷新、搜索、解锁、社交图片、图片代理
 ```
 
-`lib/notion.ts` 会先规范化当前 Notion API 的响应结构，再补齐缺失 block 和数据库数据、签名媒体 URL，并按配置加载 Tweet 与图片预览。文章前端拿到的是 Notion `ExtendedRecordMap`，不是 HTML；字数统计等功能直接遍历这棵 block 树。
+`lib/notion.ts` 通过官方 API（版本 `2025-09-03`）读取数据库、数据源和分页正文，将它们转换为现有渲染器使用的结构，并按配置加载 Tweet 与图片预览。文章前端拿到的是 Notion `ExtendedRecordMap`，不是 HTML；字数统计等功能直接遍历这棵 block 树。
 
 ## 前置条件
 
 - Node.js 22.23.4+（22.x）或 24.22.1+（24.x）；本地版本固定在 `.nvmrc`
 - pnpm 10（版本固定在 `package.json`）
-- 一个已发布到 Web 的 Notion 根页面
+- 一个已授权给 Notion 集成的根页面或数据库（可以保持私有）
 - 能运行 Next.js Pages Router API 路由的部署环境；本仓库优先支持 Vercel
 
-项目不使用 Notion Integration Token，而是通过 Notion 的公开页面接口读取内容。因此，未公开的 Notion 页面无法被站点读取。
+项目使用 `NOTION_AUTH_TOKEN` 中的官方集成 Token 进行服务端读取。请将站点根页面或数据库连接到该集成；Token 不会发送给浏览器，也不使用 `token_v2` 登录 Cookie。
 
 ## 快速开始
 
@@ -81,6 +81,12 @@ export default siteConfig({
   description: 'A short site description',
   navigationStyle: 'custom'
 })
+```
+
+在 `.env` 中设置服务端凭据，并在 Notion 中将根页面或数据库连接到该集成：
+
+```dotenv
+NOTION_AUTH_TOKEN=your-official-integration-token
 ```
 
 启动开发服务器：
@@ -112,7 +118,7 @@ pnpm dev
 
 ## Notion 配置与关键属性
 
-先将根页面发布到 Web，再在其公开树内创建文章数据库。Notion 负责数据库视图的布局、卡片字段和排序；nblog 读取这些现有结构，不额外定义内容模型。
+将根页面或数据库连接到 Notion 集成即可，源内容可以保持私有。只读取配置根目录内的文章，不搜索集成可访问的其他页面。官方 API 数据源转换为站点图库视图，按 `order` 数字升序排列（缺失时按最后编辑时间降序），不读取 Notion 网页端的视图布局和筛选。搜索按站内文章标题匹配。引用其他位置的同步块会显示提示，请使用站点内的原始同步块。
 
 ### 会与代码交互的属性
 
@@ -147,24 +153,24 @@ pnpm dev
 
 本地在 `.env.local` 中设置变量，不要提交该文件。
 
-| 变量                         | 必需         | 说明                                                                                              |
-| ---------------------------- | ------------ | ------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_NOTION_PAGE_ID` | 否           | 覆盖 `rootNotionPageId`。                                                                         |
-| `NEXT_PUBLIC_SITE_URL`       | 生产环境建议 | 公开站点 URL 或域名，用来推导站点域名。存在时会自动使用 Vercel 项目 URL 变量。                    |
-| `NEXT_PUBLIC_SITE_CONFIG`    | 否           | 覆盖 `site.config.ts` 的公开 JSON；不能包含敏感信息。                                             |
-| `NOTION_API_BASE_URL`        | 否           | 覆盖 `notion-client` 使用的 Notion API 基址。                                                     |
-| `ISR_REVALIDATE_SECONDS`     | 否           | ISR 刷新间隔（秒），默认 `60`。                                                                   |
-| `PREBUILD_NOTION_PAGES`      | 否           | 设为 `true` 时，在构建阶段预生成已知 Notion 页面；默认 `false`。                                  |
-| `NOTION_COLLECTION_LIMIT`    | 否           | 单个数据库视图请求的最大行数，默认 `100`。                                                        |
-| `PREVIEW_IMAGES_ENABLED`     | 否           | 启用 LQIP 图片占位。会增加冷启动 ISR 渲染工作量，默认关闭。                                       |
-| `REVALIDATE_TOKEN`           | 建议         | `/api/revalidate` 所需的密钥。                                                                    |
-| `NOTION_PASSWORD_PROPERTIES` | 否           | 密码属性名，逗号分隔；默认 `Password,密码`。                                                      |
-| `REDIS_ENABLED`              | 否           | 设为 `true` 或 `1` 时启用 Redis；`site.config.ts` 的 `isRedisEnabled` 也能启用。                  |
-| `REDIS_URL`                  | 条件必需     | 完整 Redis URL；也可使用 `REDIS_HOST`、`REDIS_PASSWORD` 和可选的 `REDIS_USER`（默认 `default`）。 |
-| `REDIS_NAMESPACE`            | 否           | Key 命名空间，默认 `preview-images`。                                                             |
-| `NEXT_PUBLIC_FATHOM_ID`      | 否           | Fathom 站点 ID；开发环境不启用。                                                                  |
-| `NEXT_PUBLIC_POSTHOG_ID`     | 否           | PostHog 项目 ID。                                                                                 |
-| `ANALYZE`                    | 否           | 执行包体分析构建时设为 `true`。                                                                   |
+| 变量                         | 必需         | 说明                                                                                                                        |
+| ---------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_NOTION_PAGE_ID` | 否           | 覆盖 `rootNotionPageId`。                                                                                                   |
+| `NEXT_PUBLIC_SITE_URL`       | 生产环境建议 | 公开站点 URL 或域名，用来推导站点域名。存在时会自动使用 Vercel 项目 URL 变量。                                              |
+| `NEXT_PUBLIC_SITE_CONFIG`    | 否           | 覆盖 `site.config.ts` 的公开 JSON；不能包含敏感信息。                                                                       |
+| `NOTION_AUTH_TOKEN`          | 是           | Notion 官方集成 Token，仅供服务端使用。根页面或数据库需连接到此集成，可保持私有。API 固定使用 `https://api.notion.com/v1`。 |
+| `ISR_REVALIDATE_SECONDS`     | 否           | ISR 刷新间隔（秒），默认 `60`。                                                                                             |
+| `PREBUILD_NOTION_PAGES`      | 否           | 设为 `true` 时，在构建阶段预生成已知 Notion 页面；默认 `false`。                                                            |
+| `NOTION_COLLECTION_LIMIT`    | 否           | 单个数据库视图请求的最大行数，默认 `100`。                                                                                  |
+| `PREVIEW_IMAGES_ENABLED`     | 否           | 启用 LQIP 图片占位。会增加冷启动 ISR 渲染工作量，默认关闭。                                                                 |
+| `REVALIDATE_TOKEN`           | 建议         | `/api/revalidate` 所需的密钥。                                                                                              |
+| `NOTION_PASSWORD_PROPERTIES` | 否           | 密码属性名，逗号分隔；默认 `Password,密码`。                                                                                |
+| `REDIS_ENABLED`              | 否           | 设为 `true` 或 `1` 时启用 Redis；`site.config.ts` 的 `isRedisEnabled` 也能启用。                                            |
+| `REDIS_URL`                  | 条件必需     | 完整 Redis URL；也可使用 `REDIS_HOST`、`REDIS_PASSWORD` 和可选的 `REDIS_USER`（默认 `default`）。                           |
+| `REDIS_NAMESPACE`            | 否           | Key 命名空间，默认 `preview-images`。                                                                                       |
+| `NEXT_PUBLIC_FATHOM_ID`      | 否           | Fathom 站点 ID；开发环境不启用。                                                                                            |
+| `NEXT_PUBLIC_POSTHOG_ID`     | 否           | PostHog 项目 ID。                                                                                                           |
+| `ANALYZE`                    | 否           | 执行包体分析构建时设为 `true`。                                                                                             |
 
 ## 内容刷新与缓存
 

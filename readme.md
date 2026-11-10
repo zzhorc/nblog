@@ -38,10 +38,10 @@
 ## Architecture
 
 ```text
-Public Notion root page + collection databases
+Private Notion root page + databases (connected to an integration)
                 |
                 v
-notion-client -> normalized ExtendedRecordMap -> short-lived server cache
+Official Notion API -> ExtendedRecordMap adapter -> short-lived server cache
                 |                                   |
                 |                                   +-> sitemap / RSS / search allow-list
                 v
@@ -50,16 +50,16 @@ Next.js Pages Router -> react-notion-x -> browser
                 +-> API routes: revalidate, search, unlock, social image, image proxy
 ```
 
-`lib/notion.ts` normalizes the current Notion response shape before `react-notion-x` receives it, fills missing blocks and collection data, signs media URLs, and fetches optional tweet and image-preview data. Article pages receive a Notion `ExtendedRecordMap`, not HTML; features such as the word count operate directly on that block tree.
+`lib/notion.ts` reads databases, data sources, and paginated block children through the official Notion API (version `2025-09-03`) and adapts them to `ExtendedRecordMap` for the existing renderer.
 
 ## Requirements
 
 - Node.js 22.23.4+ (22.x) or 24.22.1+ (24.x); `.nvmrc` pins the local version
 - pnpm 10 (the version is pinned in `package.json`)
-- A Notion root page that is published to the web
+- A Notion root page or database connected to an integration (it may remain private)
 - A deployment target that can run Next.js Pages Router API routes; Vercel is the supported path in this repository
 
-No Notion Integration token is used. Content is read through Notion's public-page endpoints, so unpublished pages cannot be served.
+Set `NOTION_AUTH_TOKEN` to an official Notion integration token and connect the root page/database to that integration. The token stays on the server; browser session cookies are not used.
 
 ## Quick start
 
@@ -81,6 +81,12 @@ export default siteConfig({
   description: 'A short site description',
   navigationStyle: 'custom'
 })
+```
+
+Set the server credential in `.env` and connect the root page/database to that integration in Notion:
+
+```dotenv
+NOTION_AUTH_TOKEN=your-official-integration-token
 ```
 
 Then start the development server:
@@ -112,7 +118,7 @@ All durable site settings live in [site.config.ts](site.config.ts).
 
 ## Notion setup and properties
 
-Publish the root page to the web first. Create article databases inside that public tree, then add only the properties you need. Notion controls the collection view layout, card fields, and ordering; nblog reads that structure rather than imposing a separate content model.
+Connect the root page or database to your Notion integration; it may remain private. Only pages within that root are read. Data sources render as gallery views, sorted by numeric `order` ascending or last edit descending. Notion web view layouts/filters are not imported. Search matches site article titles. Referenced synced blocks show a placeholder; use original synced blocks inside the site.
 
 ### Properties read by nblog
 
@@ -147,24 +153,24 @@ Password protection is meant to withhold body content from normal page, RSS, and
 
 Create `.env.local` for local development. Do not commit it.
 
-| Variable                     | Required                  | Description                                                                                                                           |
-| ---------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_NOTION_PAGE_ID` | No                        | Overrides `rootNotionPageId`.                                                                                                         |
-| `NEXT_PUBLIC_SITE_URL`       | Recommended in production | Public site URL or domain used to derive the configured domain. Vercel project URL variables are used automatically when present.     |
-| `NEXT_PUBLIC_SITE_CONFIG`    | No                        | Public JSON override for `site.config.ts`; do not include secrets.                                                                    |
-| `NOTION_API_BASE_URL`        | No                        | Overrides the Notion API base URL used by `notion-client`.                                                                            |
-| `ISR_REVALIDATE_SECONDS`     | No                        | ISR interval in seconds; defaults to `60`.                                                                                            |
-| `PREBUILD_NOTION_PAGES`      | No                        | Set to `true` to prebuild known Notion pages at build time. Default: `false`.                                                         |
-| `NOTION_COLLECTION_LIMIT`    | No                        | Maximum rows requested for a collection view. Default: `100`.                                                                         |
-| `PREVIEW_IMAGES_ENABLED`     | No                        | Enables LQIP image placeholders. This adds work to cold ISR renders. Default: `false`.                                                |
-| `REVALIDATE_TOKEN`           | Recommended               | Secret required by `/api/revalidate`.                                                                                                 |
-| `NOTION_PASSWORD_PROPERTIES` | No                        | Comma-separated password property names. Default: `Password,密码`.                                                                    |
-| `REDIS_ENABLED`              | No                        | Enables Redis when set to `true` or `1`; `isRedisEnabled` in config also enables it.                                                  |
-| `REDIS_URL`                  | Conditional               | Complete Redis connection URL. Alternatively provide `REDIS_HOST`, `REDIS_PASSWORD`, and optionally `REDIS_USER` (default `default`). |
-| `REDIS_NAMESPACE`            | No                        | Key namespace. Default: `preview-images`.                                                                                             |
-| `NEXT_PUBLIC_FATHOM_ID`      | No                        | Fathom site ID, disabled in development.                                                                                              |
-| `NEXT_PUBLIC_POSTHOG_ID`     | No                        | PostHog project ID.                                                                                                                   |
-| `ANALYZE`                    | No                        | Set to `true` when running a bundle-analysis build.                                                                                   |
+| Variable                     | Required                  | Description                                                                                                                            |
+| ---------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_NOTION_PAGE_ID` | No                        | Overrides `rootNotionPageId`.                                                                                                          |
+| `NEXT_PUBLIC_SITE_URL`       | Recommended in production | Public site URL or domain used to derive the configured domain. Vercel project URL variables are used automatically when present.      |
+| `NEXT_PUBLIC_SITE_CONFIG`    | No                        | Public JSON override for `site.config.ts`; do not include secrets.                                                                     |
+| `NOTION_AUTH_TOKEN`          | Yes                       | Official Notion integration token. Server only; source pages may remain private. The API host is fixed to `https://api.notion.com/v1`. |
+| `ISR_REVALIDATE_SECONDS`     | No                        | ISR interval in seconds; defaults to `60`.                                                                                             |
+| `PREBUILD_NOTION_PAGES`      | No                        | Set to `true` to prebuild known Notion pages at build time. Default: `false`.                                                          |
+| `NOTION_COLLECTION_LIMIT`    | No                        | Maximum rows requested for a collection view. Default: `100`.                                                                          |
+| `PREVIEW_IMAGES_ENABLED`     | No                        | Enables LQIP image placeholders. This adds work to cold ISR renders. Default: `false`.                                                 |
+| `REVALIDATE_TOKEN`           | Recommended               | Secret required by `/api/revalidate`.                                                                                                  |
+| `NOTION_PASSWORD_PROPERTIES` | No                        | Comma-separated password property names. Default: `Password,密码`.                                                                     |
+| `REDIS_ENABLED`              | No                        | Enables Redis when set to `true` or `1`; `isRedisEnabled` in config also enables it.                                                   |
+| `REDIS_URL`                  | Conditional               | Complete Redis connection URL. Alternatively provide `REDIS_HOST`, `REDIS_PASSWORD`, and optionally `REDIS_USER` (default `default`).  |
+| `REDIS_NAMESPACE`            | No                        | Key namespace. Default: `preview-images`.                                                                                              |
+| `NEXT_PUBLIC_FATHOM_ID`      | No                        | Fathom site ID, disabled in development.                                                                                               |
+| `NEXT_PUBLIC_POSTHOG_ID`     | No                        | PostHog project ID.                                                                                                                    |
+| `ANALYZE`                    | No                        | Set to `true` when running a bundle-analysis build.                                                                                    |
 
 ## Content refresh and cache behavior
 
